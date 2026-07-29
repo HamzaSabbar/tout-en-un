@@ -1,0 +1,25 @@
+# Projet séparé, historique Git propre
+tout-en-un-landing/
+
+# Archive redondante avec tout-en-un-landing-php/
+tout-en-un-landing-php.zip
+
+# Dépendances
+node_modules/
+
+# Next.js
+.next/
+out/
+build/
+dist/
+
+# Environnement
+.env
+.env.local
+.env.*.local
+
+# Divers
+.DS_Store
+*.log
+npm-debug.log*
+.vscode/
