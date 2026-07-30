@@ -13,10 +13,10 @@ export default defineConfig({
     baseURL: "http://localhost:3000",
   },
   webServer: {
-    command: "pnpm dev",
+    command: process.env.CI ? "pnpm build && pnpm start" : "pnpm dev",
     url: "http://localhost:3000",
     reuseExistingServer: !process.env.CI,
-    timeout: 120_000,
+    timeout: 180_000,
     stdout: "pipe",
     stderr: "pipe",
   },

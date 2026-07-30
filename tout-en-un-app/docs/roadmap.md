@@ -77,7 +77,7 @@ toute ligne de code métier.
       révocables (cookie httpOnly, secure, SameSite Lax, 30 jours glissants)
 - [x] Matrice des rôles (eleve, admin, professeur, support, commercial) et
       fonction unique de vérification des permissions
-- [ ] Intégration continue GitHub Actions : types, analyse statique, tests,
+- [x] Intégration continue GitHub Actions : types, analyse statique, tests,
       migrations
 - [ ] Provisionnement des trois environnements sur le scénario A (Vercel,
       Supabase)
