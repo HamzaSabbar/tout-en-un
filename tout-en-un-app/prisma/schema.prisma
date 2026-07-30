@@ -17,6 +17,23 @@ enum Role {
   @@map("role")
 }
 
+enum Statut {
+  brouillon
+  publie
+
+  @@map("statut")
+}
+
+enum TypeDocument {
+  cours_pdf
+  resume_pdf
+  correction_pdf
+  sujet_pdf
+  support_live
+
+  @@map("type_document")
+}
+
 model Utilisateur {
   id                 BigInt    @id @default(autoincrement())
   nom                String
@@ -32,6 +49,8 @@ model Utilisateur {
 
   sessions               SessionUtilisateur[]
   jetons_reinitialisation JetonReinitialisation[]
+  cours_enseignes        Cours[]
+  fichiers_televerses    Fichier[]
 
   @@map("utilisateur")
 }
@@ -64,4 +83,137 @@ model SessionUtilisateur {
 
   @@index([utilisateur_id])
   @@map("session_utilisateur")
+}
+
+model Filiere {
+  id      BigInt  @id @default(autoincrement())
+  code    String  @unique
+  libelle String
+  ordre   Int     @default(0)
+  actif   Boolean @default(true)
+
+  matieres FiliereMatiere[]
+
+  @@map("filiere")
+}
+
+model Matiere {
+  id          BigInt   @id @default(autoincrement())
+  code        String   @unique
+  libelle     String
+  description String?
+  icone       String?
+  couleur     String?
+  statut      Statut   @default(brouillon)
+  ordre       Int      @default(0)
+  supprime_le DateTime?
+
+  filieres   FiliereMatiere[]
+  chapitres  Chapitre[]
+  documents  Document[]
+
+  @@map("matiere")
+}
+
+model FiliereMatiere {
+  id         BigInt @id @default(autoincrement())
+  filiere_id BigInt
+  matiere_id BigInt
+
+  filiere Filiere @relation(fields: [filiere_id], references: [id])
+  matiere Matiere @relation(fields: [matiere_id], references: [id])
+
+  @@unique([filiere_id, matiere_id])
+  @@map("filiere_matiere")
+}
+
+model Chapitre {
+  id          BigInt    @id @default(autoincrement())
+  matiere_id  BigInt
+  libelle     String
+  description String?
+  icone       String?
+  ordre       Int       @default(0)
+  statut      Statut    @default(brouillon)
+  supprime_le DateTime?
+
+  matiere   Matiere    @relation(fields: [matiere_id], references: [id])
+  cours     Cours[]
+  documents Document[]
+
+  @@index([matiere_id, statut, ordre])
+  @@map("chapitre")
+}
+
+model Cours {
+  id             BigInt    @id @default(autoincrement())
+  chapitre_id    BigInt
+  titre          String
+  description    String?
+  ordre          Int       @default(0)
+  statut         Statut    @default(brouillon)
+  professeur_id  BigInt?
+  publie_le      DateTime?
+  supprime_le    DateTime?
+
+  chapitre   Chapitre     @relation(fields: [chapitre_id], references: [id])
+  professeur Utilisateur? @relation(fields: [professeur_id], references: [id])
+  videos     Video[]
+  documents  Document[]
+
+  @@index([chapitre_id, statut, ordre])
+  @@map("cours")
+}
+
+model Video {
+  id              BigInt    @id @default(autoincrement())
+  cours_id        BigInt
+  titre           String
+  description     String?
+  duree_secondes  Int?
+  fournisseur     String
+  video_ref       String
+  ordre           Int       @default(0)
+  statut          Statut    @default(brouillon)
+  supprime_le     DateTime?
+
+  cours Cours @relation(fields: [cours_id], references: [id])
+
+  @@index([cours_id, statut, ordre])
+  @@map("video")
+}
+
+model Fichier {
+  id              BigInt    @id @default(autoincrement())
+  nom             String
+  cle_stockage    String    @unique
+  type_mime       String
+  taille          Int
+  televerse_par   BigInt?
+  cree_le         DateTime  @default(now())
+  supprime_le     DateTime?
+
+  televerseur Utilisateur? @relation(fields: [televerse_par], references: [id])
+  documents   Document[]
+
+  @@map("fichier")
+}
+
+model Document {
+  id          BigInt       @id @default(autoincrement())
+  type        TypeDocument
+  titre       String
+  matiere_id  BigInt?
+  chapitre_id BigInt?
+  cours_id    BigInt?
+  fichier_id  BigInt
+  statut      Statut       @default(brouillon)
+  supprime_le DateTime?
+
+  matiere  Matiere?  @relation(fields: [matiere_id], references: [id])
+  chapitre Chapitre? @relation(fields: [chapitre_id], references: [id])
+  cours    Cours?    @relation(fields: [cours_id], references: [id])
+  fichier  Fichier   @relation(fields: [fichier_id], references: [id])
+
+  @@map("document")
 }
