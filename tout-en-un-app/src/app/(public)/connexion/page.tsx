@@ -51,6 +51,9 @@ export default function ConnexionPage() {
               Se connecter
             </Button>
             <p className="text-sm text-muted-foreground">
+              <Link href="/mot-de-passe-oublie">Mot de passe oublié ?</Link>
+            </p>
+            <p className="text-sm text-muted-foreground">
               Pas encore de compte ? <Link href="/inscription">S&apos;inscrire</Link>
             </p>
           </CardFooter>

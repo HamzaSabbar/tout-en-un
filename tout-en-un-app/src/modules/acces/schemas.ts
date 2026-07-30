@@ -17,3 +17,20 @@ export const connexionSchema = z.object({
 });
 
 export type ConnexionInput = z.infer<typeof connexionSchema>;
+
+export const demandeReinitialisationSchema = z.object({
+  email: z.string().trim().toLowerCase().email(),
+});
+
+export type DemandeReinitialisationInput = z.infer<
+  typeof demandeReinitialisationSchema
+>;
+
+export const reinitialisationMotDePasseSchema = z.object({
+  jeton: z.string().min(1),
+  mot_de_passe: z.string().min(10).max(200),
+});
+
+export type ReinitialisationMotDePasseInput = z.infer<
+  typeof reinitialisationMotDePasseSchema
+>;

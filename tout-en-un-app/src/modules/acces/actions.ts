@@ -2,11 +2,21 @@
 
 import { redirect } from "next/navigation";
 import { cookies, headers } from "next/headers";
-import { login, logout, register } from "@/modules/acces/service";
+import {
+  demanderReinitialisation,
+  login,
+  logout,
+  register,
+  reinitialiserMotDePasse,
+} from "@/modules/acces/service";
 import { SESSION_COOKIE_NAME, setSessionCookie, clearSessionCookie } from "@/lib/auth/session";
 
 export interface ActionState {
   erreur?: string;
+}
+
+export interface DemandeReinitialisationState {
+  envoye?: boolean;
 }
 
 function champsFormulaire(formData: FormData) {
@@ -51,5 +61,24 @@ export async function logoutAction(): Promise<void> {
     await logout(token);
   }
   await clearSessionCookie();
+  redirect("/connexion");
+}
+
+export async function demanderReinitialisationAction(
+  _prevState: DemandeReinitialisationState,
+  formData: FormData,
+): Promise<DemandeReinitialisationState> {
+  await demanderReinitialisation(champsFormulaire(formData));
+  return { envoye: true };
+}
+
+export async function reinitialiserMotDePasseAction(
+  _prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const resultat = await reinitialiserMotDePasse(champsFormulaire(formData));
+  if (!resultat.succes) {
+    return { erreur: resultat.erreur };
+  }
   redirect("/connexion");
 }

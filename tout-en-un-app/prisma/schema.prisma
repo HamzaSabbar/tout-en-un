@@ -30,9 +30,24 @@ model Utilisateur {
   derniere_connexion DateTime?
   cree_le            DateTime  @default(now())
 
-  sessions SessionUtilisateur[]
+  sessions               SessionUtilisateur[]
+  jetons_reinitialisation JetonReinitialisation[]
 
   @@map("utilisateur")
+}
+
+model JetonReinitialisation {
+  id             BigInt    @id @default(autoincrement())
+  utilisateur_id BigInt
+  jeton_hash     String    @unique
+  expire_le      DateTime
+  utilise_le     DateTime?
+  cree_le        DateTime  @default(now())
+
+  utilisateur Utilisateur @relation(fields: [utilisateur_id], references: [id])
+
+  @@index([utilisateur_id])
+  @@map("jeton_reinitialisation")
 }
 
 model SessionUtilisateur {
