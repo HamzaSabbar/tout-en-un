@@ -69,17 +69,17 @@ Les lots 5 à 10 sont décalables. Les lots 0 à 4 et 11 ne le sont pas.
 5 j, critique. Mettre en place l'environnement et la chaîne de livraison avant
 toute ligne de code métier.
 
-- [ ] Dépôt Git unique, branche principale protégée, une branche par
+- [x] Dépôt Git unique, branche principale protégée, une branche par
       fonctionnalité
-- [ ] Initialisation Next.js 15 en TypeScript, Tailwind CSS, shadcn/ui
-- [ ] Schéma PostgreSQL 16 et Prisma, migrations versionnées
+- [x] Initialisation Next.js 15 en TypeScript, Tailwind CSS, shadcn/ui
+- [x] Schéma PostgreSQL 16 et Prisma, migrations versionnées
 - [x] Auth.js : email et mot de passe, hachage Argon2id, sessions serveur
       révocables (cookie httpOnly, secure, SameSite Lax, 30 jours glissants)
 - [x] Matrice des rôles (eleve, admin, professeur, support, commercial) et
       fonction unique de vérification des permissions
 - [x] Intégration continue GitHub Actions : types, analyse statique, tests,
       migrations
-- [ ] Provisionnement des trois environnements sur le scénario A (Vercel,
+- [x] Provisionnement des trois environnements sur le scénario A (Vercel,
       Supabase)
 
 **Critère de sortie.** Un utilisateur peut être créé, se connecter et voir une
