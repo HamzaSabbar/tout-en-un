@@ -79,6 +79,29 @@ describe("televerserDocument", () => {
     expect(televerser).not.toHaveBeenCalled();
   });
 
+  it("retourne une erreur normale (pas une exception) si le stockage n'est pas configuré", async () => {
+    televerser.mockRejectedValue(new Error("Stockage de fichiers non configuré : ..."));
+
+    const resultat = await televerserDocument(
+      {
+        type: "cours_pdf",
+        titre: "Cours 1",
+        nom: "cours.pdf",
+        type_mime: "application/pdf",
+        taille: 1024,
+      },
+      contenu,
+      BigInt(1),
+    );
+
+    expect(resultat).toEqual({
+      succes: false,
+      erreur: "Stockage de fichiers non configuré : ...",
+    });
+    expect(createFichier).not.toHaveBeenCalled();
+    expect(createDocument).not.toHaveBeenCalled();
+  });
+
   it("téléverse, crée le fichier puis le document avec une clé opaque", async () => {
     televerser.mockResolvedValue(undefined);
     createFichier.mockResolvedValue({ id: BigInt(10) });
@@ -137,6 +160,27 @@ describe("remplacerFichier", () => {
     });
     expect(resultat.succes).toBe(false);
     expect(televerser).not.toHaveBeenCalled();
+  });
+
+  it("retourne une erreur normale si le stockage échoue, sans modifier le fichier", async () => {
+    findUniqueFichier.mockResolvedValue({
+      id: BigInt(10),
+      cle_stockage: "1/2/3/cours_pdf-abc123.pdf",
+      supprime_le: null,
+    });
+    televerser.mockRejectedValue(new Error("Stockage de fichiers non configuré : ..."));
+
+    const resultat = await remplacerFichier(BigInt(10), contenu, {
+      nom: "nouveau.pdf",
+      type_mime: "application/pdf",
+      taille: 2048,
+    });
+
+    expect(resultat).toEqual({
+      succes: false,
+      erreur: "Stockage de fichiers non configuré : ...",
+    });
+    expect(updateFichier).not.toHaveBeenCalled();
   });
 
   it("réutilise la même clé de stockage et le même identifiant de fichier", async () => {

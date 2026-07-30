@@ -4,6 +4,7 @@ import { Prisma } from "@/generated/prisma";
 const create = vi.fn();
 const update = vi.fn();
 const findMany = vi.fn();
+const findFirst = vi.fn();
 
 vi.mock("@/lib/db", () => ({
   prisma: {
@@ -11,6 +12,7 @@ vi.mock("@/lib/db", () => ({
       create: (...args: unknown[]) => create(...args),
       update: (...args: unknown[]) => update(...args),
       findMany: (...args: unknown[]) => findMany(...args),
+      findFirst: (...args: unknown[]) => findFirst(...args),
     },
   },
 }));
@@ -20,6 +22,7 @@ import {
   depublierMatiere,
   listerMatieres,
   modifierMatiere,
+  obtenirMatiere,
   publierMatiere,
   supprimerMatiere,
 } from "@/modules/contenu/matiere";
@@ -35,6 +38,7 @@ beforeEach(() => {
   create.mockReset();
   update.mockReset();
   findMany.mockReset();
+  findFirst.mockReset();
 });
 
 describe("creerMatiere", () => {
@@ -72,6 +76,16 @@ describe("listerMatieres", () => {
     expect(findMany).toHaveBeenCalledWith({
       where: { supprime_le: null },
       orderBy: { ordre: "asc" },
+    });
+  });
+});
+
+describe("obtenirMatiere", () => {
+  it("exclut une matière supprimée", async () => {
+    findFirst.mockResolvedValue(null);
+    await obtenirMatiere(BigInt(1));
+    expect(findFirst).toHaveBeenCalledWith({
+      where: { id: BigInt(1), supprime_le: null },
     });
   });
 });

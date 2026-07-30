@@ -63,6 +63,10 @@ export function listerMatieres() {
   });
 }
 
+export function obtenirMatiere(id: bigint) {
+  return prisma.matiere.findFirst({ where: { id, supprime_le: null } });
+}
+
 export async function publierMatiere(id: bigint): Promise<void> {
   await prisma.matiere.update({ where: { id }, data: { statut: "publie" } });
 }

@@ -41,6 +41,10 @@ export function listerCours(chapitreId: bigint) {
   });
 }
 
+export function obtenirCours(id: bigint) {
+  return prisma.cours.findFirst({ where: { id, supprime_le: null } });
+}
+
 export async function reordonnerCours(idsOrdonnes: bigint[]): Promise<void> {
   await prisma.$transaction(
     idsOrdonnes.map((id, index) =>

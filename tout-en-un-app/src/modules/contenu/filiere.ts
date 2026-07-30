@@ -62,6 +62,13 @@ export function listerFilieres() {
   return prisma.filiere.findMany({ orderBy: { ordre: "asc" } });
 }
 
+export function listerFilieresAvecMatieres() {
+  return prisma.filiere.findMany({
+    orderBy: { ordre: "asc" },
+    include: { matieres: { include: { matiere: true } } },
+  });
+}
+
 export async function associerMatiere(filiereId: bigint, matiereId: bigint): Promise<void> {
   await prisma.filiereMatiere.upsert({
     where: { filiere_id_matiere_id: { filiere_id: filiereId, matiere_id: matiereId } },

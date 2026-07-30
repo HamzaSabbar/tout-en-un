@@ -3,6 +3,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 const create = vi.fn();
 const update = vi.fn();
 const findMany = vi.fn();
+const findFirst = vi.fn();
 const transaction = vi.fn();
 
 vi.mock("@/lib/db", () => ({
@@ -11,6 +12,7 @@ vi.mock("@/lib/db", () => ({
       create: (...args: unknown[]) => create(...args),
       update: (...args: unknown[]) => update(...args),
       findMany: (...args: unknown[]) => findMany(...args),
+      findFirst: (...args: unknown[]) => findFirst(...args),
     },
     $transaction: (...args: unknown[]) => transaction(...args),
   },
@@ -21,6 +23,7 @@ import {
   depublierChapitre,
   listerChapitres,
   modifierChapitre,
+  obtenirChapitre,
   publierChapitre,
   reordonnerChapitres,
   supprimerChapitre,
@@ -30,6 +33,7 @@ beforeEach(() => {
   create.mockReset();
   update.mockReset();
   findMany.mockReset();
+  findFirst.mockReset();
   transaction.mockReset();
   transaction.mockResolvedValue(undefined);
 });
@@ -63,6 +67,16 @@ describe("listerChapitres", () => {
     expect(findMany).toHaveBeenCalledWith({
       where: { matiere_id: BigInt(1), supprime_le: null },
       orderBy: { ordre: "asc" },
+    });
+  });
+});
+
+describe("obtenirChapitre", () => {
+  it("exclut un chapitre supprimé", async () => {
+    findFirst.mockResolvedValue(null);
+    await obtenirChapitre(BigInt(1));
+    expect(findFirst).toHaveBeenCalledWith({
+      where: { id: BigInt(1), supprime_le: null },
     });
   });
 });

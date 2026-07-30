@@ -26,6 +26,7 @@ import {
   creerFiliere,
   dissocierMatiere,
   listerFilieres,
+  listerFilieresAvecMatieres,
   modifierFiliere,
 } from "@/modules/contenu/filiere";
 
@@ -77,6 +78,17 @@ describe("listerFilieres", () => {
     findMany.mockResolvedValue([]);
     await listerFilieres();
     expect(findMany).toHaveBeenCalledWith({ orderBy: { ordre: "asc" } });
+  });
+});
+
+describe("listerFilieresAvecMatieres", () => {
+  it("inclut les matières associées", async () => {
+    findMany.mockResolvedValue([]);
+    await listerFilieresAvecMatieres();
+    expect(findMany).toHaveBeenCalledWith({
+      orderBy: { ordre: "asc" },
+      include: { matieres: { include: { matiere: true } } },
+    });
   });
 });
 

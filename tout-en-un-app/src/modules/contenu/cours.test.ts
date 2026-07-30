@@ -26,6 +26,7 @@ import {
   dupliquerCours,
   listerCours,
   modifierCours,
+  obtenirCours,
   publierCours,
   reordonnerCours,
   supprimerCours,
@@ -70,6 +71,16 @@ describe("listerCours", () => {
     expect(findMany).toHaveBeenCalledWith({
       where: { chapitre_id: BigInt(1), supprime_le: null },
       orderBy: { ordre: "asc" },
+    });
+  });
+});
+
+describe("obtenirCours", () => {
+  it("exclut un cours supprimé", async () => {
+    findFirst.mockResolvedValue(null);
+    await obtenirCours(BigInt(1));
+    expect(findFirst).toHaveBeenCalledWith({
+      where: { id: BigInt(1), supprime_le: null },
     });
   });
 });

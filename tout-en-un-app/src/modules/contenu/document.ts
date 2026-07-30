@@ -66,7 +66,11 @@ export async function televerserDocument(
     type: donnees.data.type,
   });
 
-  await storageService.televerser({ cle, contenu, typeMime: donnees.data.type_mime });
+  try {
+    await storageService.televerser({ cle, contenu, typeMime: donnees.data.type_mime });
+  } catch (erreur) {
+    return { succes: false, erreur: erreur instanceof Error ? erreur.message : "Échec du stockage." };
+  }
 
   const fichier = await prisma.fichier.create({
     data: {
@@ -110,11 +114,15 @@ export async function remplacerFichier(
     return { succes: false, erreur: "Fichier introuvable." };
   }
 
-  await storageService.televerser({
-    cle: fichier.cle_stockage,
-    contenu,
-    typeMime: donnees.data.type_mime,
-  });
+  try {
+    await storageService.televerser({
+      cle: fichier.cle_stockage,
+      contenu,
+      typeMime: donnees.data.type_mime,
+    });
+  } catch (erreur) {
+    return { succes: false, erreur: erreur instanceof Error ? erreur.message : "Échec du stockage." };
+  }
 
   const misAJour = await prisma.fichier.update({
     where: { id: fichierId },

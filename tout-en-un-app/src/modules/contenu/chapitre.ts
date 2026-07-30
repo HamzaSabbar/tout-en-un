@@ -41,6 +41,10 @@ export function listerChapitres(matiereId: bigint) {
   });
 }
 
+export function obtenirChapitre(id: bigint) {
+  return prisma.chapitre.findFirst({ where: { id, supprime_le: null } });
+}
+
 export async function reordonnerChapitres(idsOrdonnes: bigint[]): Promise<void> {
   await prisma.$transaction(
     idsOrdonnes.map((id, index) =>
