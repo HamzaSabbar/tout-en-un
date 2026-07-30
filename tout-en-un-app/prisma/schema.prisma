@@ -1,0 +1,52 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  eleve
+  admin
+  professeur
+  support
+  commercial
+
+  @@map("role")
+}
+
+model Utilisateur {
+  id                 BigInt    @id @default(autoincrement())
+  nom                String
+  prenom             String
+  email              String    @unique
+  telephone          String
+  ville              String?
+  mot_de_passe_hash  String
+  role               Role      @default(eleve)
+  actif              Boolean   @default(true)
+  derniere_connexion DateTime?
+  cree_le            DateTime  @default(now())
+
+  sessions SessionUtilisateur[]
+
+  @@map("utilisateur")
+}
+
+model SessionUtilisateur {
+  id             BigInt   @id @default(autoincrement())
+  utilisateur_id BigInt
+  jeton_hash     String   @unique
+  appareil       String?
+  ip             String?
+  expire_le      DateTime
+  revoquee       Boolean  @default(false)
+  cree_le        DateTime @default(now())
+
+  utilisateur Utilisateur @relation(fields: [utilisateur_id], references: [id])
+
+  @@index([utilisateur_id])
+  @@map("session_utilisateur")
+}
