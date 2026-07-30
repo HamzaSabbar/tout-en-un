@@ -95,17 +95,17 @@ Architecture : sections 3, 4, 7, 18.
 10 j, critique. Livrer l'outil de saisie en priorité, car la production de
 contenu pédagogique est le vrai chemin critique du projet.
 
-- [ ] Filières, matières, table de liaison `filiere_matiere`
-- [ ] Arborescence chapitre puis cours, avec `ordre` et `statut` (brouillon,
+- [x] Filières, matières, table de liaison `filiere_matiere`
+- [x] Arborescence chapitre puis cours, avec `ordre` et `statut` (brouillon,
       publie) à chaque niveau
-- [ ] Vidéos rattachées à un cours, champ `video_ref` neutre (identifiant plus
+- [x] Vidéos rattachées à un cours, champ `video_ref` neutre (identifiant plus
       fournisseur)
-- [ ] Téléversement de documents PDF (cours, résumés, corrections, sujets) et
+- [x] Téléversement de documents PDF (cours, résumés, corrections, sujets) et
       convention de nommage des clés :
       `matiere/chapitre/cours/type-identifiant.pdf`
-- [ ] Médiathèque : recherche, réutilisation, remplacement d'un fichier sans
+- [x] Médiathèque : recherche, réutilisation, remplacement d'un fichier sans
       casser les références
-- [ ] Publication en un clic et duplication d'éléments
+- [x] Publication en un clic et duplication d'éléments
 
 **Critère de sortie.** Le professeur saisit une matière complète de bout en bout
 et la garde en brouillon, sans qu'aucun élève ne la voie. La saisie de contenu
