@@ -73,9 +73,9 @@ toute ligne de code métier.
       fonctionnalité
 - [ ] Initialisation Next.js 15 en TypeScript, Tailwind CSS, shadcn/ui
 - [ ] Schéma PostgreSQL 16 et Prisma, migrations versionnées
-- [ ] Auth.js : email et mot de passe, hachage Argon2id, sessions serveur
+- [x] Auth.js : email et mot de passe, hachage Argon2id, sessions serveur
       révocables (cookie httpOnly, secure, SameSite Lax, 30 jours glissants)
-- [ ] Matrice des rôles (eleve, admin, professeur, support, commercial) et
+- [x] Matrice des rôles (eleve, admin, professeur, support, commercial) et
       fonction unique de vérification des permissions
 - [ ] Intégration continue GitHub Actions : types, analyse statique, tests,
       migrations

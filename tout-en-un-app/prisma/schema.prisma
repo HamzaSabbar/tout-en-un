@@ -43,6 +43,7 @@ model SessionUtilisateur {
   ip             String?
   expire_le      DateTime
   revoquee       Boolean  @default(false)
+  cree_le        DateTime @default(now())
 
   utilisateur Utilisateur @relation(fields: [utilisateur_id], references: [id])
 
