@@ -20,6 +20,11 @@ Lots de développement et critères de sortie : `docs/roadmap.md`.
 - `npx prisma migrate dev --name <nom>` : toute évolution du schéma. Jamais de
   SQL manuel, jamais de `db push` sur une base partagée
 - `npx prisma studio` : inspection de la base locale
+- `npm run seed:admin` : crée ou remet en état le compte admin de
+  développement. Idempotent. Mot de passe pris dans `ADMIN_MOT_DE_PASSE`, ou
+  généré et affiché une seule fois. Jamais de mot de passe dans le code
+- `npm run inventaire [chemin.md]` : inventaire en lecture seule de la base
+  visée, utile avant de décider quoi conserver
 
 ### Base des tests de bout en bout
 
@@ -39,6 +44,14 @@ sur un hôte local. Chaque scénario se nettoie ensuite via `nettoyerDonneesE2E(
 en `afterEach`, qui supprime uniquement les lignes marquées du préfixe `E2E` :
 toute fixture nouvelle doit porter ce préfixe dans son code, son libellé ou son
 email, sinon elle survit au nettoyage.
+
+IMPORTANT : viser une base distante demande **deux** confirmations explicites,
+`E2E_BASE_DISTANTE_AUTORISEE=oui` **et** `E2E_CONFIRMER_HOTE=<hôte exact>`. Une
+seule ne suffit pas, et la seconde cesse de correspondre dès que la base change,
+pour qu'une variable oubliée dans un profil de shell ne puisse pas ouvrir la
+porte. Ne le fais que sur une base dont la perte est acceptable : le nettoyage y
+supprimera des données. Une exécution de ce type a déjà effacé tous les comptes
+de la base de développement.
 
 ## Règles non négociables
 

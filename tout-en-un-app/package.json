@@ -10,6 +10,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:e2e": "playwright test",
+    "seed:admin": "node prisma/seed-admin.ts",
+    "inventaire": "node scripts/inventaire-dev.ts",
     "postinstall": "prisma generate"
   },
   "dependencies": {
