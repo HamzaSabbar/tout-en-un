@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import type { Resultat } from "@/modules/contenu/resultat";
+import type { Resultat } from "@/lib/resultat";
 
 export const creerCoursSchema = z.object({
   chapitre_id: z.coerce.bigint(),

@@ -11,12 +11,14 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CreerCoursForm } from "./creer-cours-form";
+import { requirePermission } from "@/modules/acces/require-auth";
 
 export default async function CoursListePage({
   params,
 }: {
   params: Promise<{ matiereId: string; chapitreId: string }>;
 }) {
+  await requirePermission("contenu:gerer");
   const { matiereId, chapitreId } = await params;
   const chapitre = await obtenirChapitre(BigInt(chapitreId));
   if (!chapitre) {

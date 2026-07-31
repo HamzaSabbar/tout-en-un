@@ -1,18 +1,35 @@
-import { test, expect } from "@playwright/test";
+import "dotenv/config";
+import { test, expect, type Page } from "@playwright/test";
+import { prisma } from "@/lib/db";
+
+// La filière est obligatoire à l'inscription depuis le lot 2 : chaque test en
+// crée une pour pouvoir la sélectionner dans le formulaire.
+async function creerFiliere(suffixe: number): Promise<string> {
+  const libelle = `Sciences Physiques ${suffixe}`;
+  await prisma.filiere.create({ data: { code: `FA${suffixe}`, libelle } });
+  return libelle;
+}
+
+async function choisirFiliere(page: Page, libelle: string) {
+  await page.getByLabel("Filière").selectOption({ label: libelle });
+}
 
 test("un élève peut être créé, se connecter et voir une page protégée", async ({
   page,
   context,
 }) => {
-  const email = `e2e+${Date.now()}@test.local`;
+  const suffixe = Date.now();
+  const email = `e2e+${suffixe}@test.local`;
   const motDePasse = "mot-de-passe-de-test-123";
   const prenom = "Sara";
+  const filiere = await creerFiliere(suffixe);
 
   await page.goto("/inscription");
   await page.getByLabel("Nom", { exact: true }).fill("Alami");
   await page.getByLabel("Prénom").fill(prenom);
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Téléphone").fill("0612345678");
+  await choisirFiliere(page, filiere);
   await page.getByLabel("Mot de passe").fill(motDePasse);
   await page.getByRole("button", { name: "Créer mon compte" }).click();
   await expect(page).toHaveURL(/\/connexion$/);
@@ -48,14 +65,17 @@ test("la déconnexion révoque la session côté serveur", async ({
   page,
   context,
 }) => {
-  const email = `e2e+${Date.now()}@test.local`;
+  const suffixe = Date.now();
+  const email = `e2e+${suffixe}@test.local`;
   const motDePasse = "mot-de-passe-de-test-123";
+  const filiere = await creerFiliere(suffixe);
 
   await page.goto("/inscription");
   await page.getByLabel("Nom", { exact: true }).fill("Bennani");
   await page.getByLabel("Prénom").fill("Yassine");
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Téléphone").fill("0612345678");
+  await choisirFiliere(page, filiere);
   await page.getByLabel("Mot de passe").fill(motDePasse);
   await page.getByRole("button", { name: "Créer mon compte" }).click();
   await expect(page).toHaveURL(/\/connexion$/);

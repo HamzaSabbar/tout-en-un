@@ -12,14 +12,21 @@ async function connecter(page: Page, email: string, motDePasse: string) {
 }
 
 test("un élève sans permission n'accède pas au back-office contenu", async ({ page }) => {
-  const email = `e2e-eleve+${Date.now()}@test.local`;
+  const suffixe = Date.now();
+  const email = `e2e-eleve+${suffixe}@test.local`;
   const motDePasse = "mot-de-passe-eleve-123";
+  const libelleFiliere = `Sciences Physiques ${suffixe}`;
+
+  await prisma.filiere.create({
+    data: { code: `FE${suffixe}`, libelle: libelleFiliere },
+  });
 
   await page.goto("/inscription");
   await page.getByLabel("Nom", { exact: true }).fill("Alami");
   await page.getByLabel("Prénom").fill("Sara");
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Téléphone").fill("0612345678");
+  await page.getByLabel("Filière").selectOption({ label: libelleFiliere });
   await page.getByLabel("Mot de passe").fill(motDePasse);
   await page.getByRole("button", { name: "Créer mon compte" }).click();
   await expect(page).toHaveURL(/\/connexion$/);

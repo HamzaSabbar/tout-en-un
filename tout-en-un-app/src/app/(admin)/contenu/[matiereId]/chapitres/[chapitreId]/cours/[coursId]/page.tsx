@@ -8,12 +8,14 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CreerVideoForm } from "./creer-video-form";
 import { TeleverserDocumentForm } from "./televerser-document-form";
+import { requirePermission } from "@/modules/acces/require-auth";
 
 export default async function CoursDetailPage({
   params,
 }: {
   params: Promise<{ matiereId: string; chapitreId: string; coursId: string }>;
 }) {
+  await requirePermission("contenu:gerer");
   const { matiereId, chapitreId, coursId } = await params;
   const cours = await obtenirCours(BigInt(coursId));
   if (!cours) {

@@ -2,12 +2,14 @@ import { listerMediatheque } from "@/modules/contenu/document";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { RemplacerFichierForm } from "./remplacer-fichier-form";
+import { requirePermission } from "@/modules/acces/require-auth";
 
 export default async function MediathequePage({
   searchParams,
 }: {
   searchParams: Promise<{ q?: string }>;
 }) {
+  await requirePermission("contenu:gerer");
   const { q } = await searchParams;
   const fichiers = await listerMediatheque(q);
 

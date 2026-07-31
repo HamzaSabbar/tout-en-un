@@ -4,8 +4,10 @@ import { depublierMatiereAction, publierMatiereAction } from "@/modules/contenu/
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CreerMatiereForm } from "./creer-matiere-form";
+import { requirePermission } from "@/modules/acces/require-auth";
 
 export default async function MatieresPage() {
+  await requirePermission("contenu:gerer");
   const matieres = await listerMatieres();
 
   return (

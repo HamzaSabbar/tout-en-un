@@ -6,6 +6,7 @@ export const inscriptionSchema = z.object({
   email: z.string().trim().toLowerCase().email().max(255),
   telephone: z.string().trim().min(9).max(20),
   ville: z.string().trim().max(100).optional(),
+  filiere_id: z.coerce.bigint(),
   mot_de_passe: z.string().min(10).max(200),
 });
 

@@ -39,7 +39,16 @@ export async function register(
     return { succes: false, erreur: "Formulaire invalide." };
   }
 
-  const { nom, prenom, email, telephone, ville, mot_de_passe } = donnees.data;
+  const { nom, prenom, email, telephone, ville, filiere_id, mot_de_passe } =
+    donnees.data;
+
+  const filiere = await prisma.filiere.findFirst({
+    where: { id: filiere_id, actif: true },
+    select: { id: true },
+  });
+  if (!filiere) {
+    return { succes: false, erreur: "Filière invalide." };
+  }
 
   try {
     const utilisateur = await prisma.utilisateur.create({
@@ -49,6 +58,7 @@ export async function register(
         email,
         telephone,
         ville,
+        filiere_id: filiere.id,
         mot_de_passe_hash: await hashPassword(mot_de_passe),
         role: "eleve",
       },

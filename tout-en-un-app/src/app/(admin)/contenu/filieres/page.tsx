@@ -5,8 +5,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CreerFiliereForm } from "./creer-filiere-form";
+import { requirePermission } from "@/modules/acces/require-auth";
 
 export default async function FilieresPage() {
+  await requirePermission("contenu:gerer");
   const [filieres, matieres] = await Promise.all([
     listerFilieresAvecMatieres(),
     listerMatieres(),

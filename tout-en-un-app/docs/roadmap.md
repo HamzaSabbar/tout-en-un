@@ -120,19 +120,23 @@ Architecture : sections 5.2, 8.
 7 j, critique. Implémenter la règle métier la plus sensible de la plateforme, une
 seule fois, côté serveur.
 
-- [ ] Inscription élève avec téléphone obligatoire et choix de la filière
-- [ ] Modèle `offre`, `abonnement`, `abonnement_matiere` : l'accès se joue
+- [x] Inscription élève avec téléphone obligatoire et choix de la filière
+- [x] Modèle `offre`, `abonnement`, `abonnement_matiere` : l'accès se joue
       matière par matière, pas au niveau de l'abonnement
-- [ ] Parcours de demande d'accès (`demande_matiere`) et file de traitement dans
+- [x] Parcours de demande d'accès (`demande_matiere`) et file de traitement dans
       le back-office
-- [ ] Activation manuelle par l'admin : durée, montant, référence de paiement,
+- [x] Activation manuelle par l'admin : durée, montant, référence de paiement,
       confirmation WhatsApp
-- [ ] `verifierAccesMatiere()` dans `src/modules/acces/`, appelée en amont de
+- [x] `verifierAccesMatiere()` dans `src/modules/acces/`, appelée en amont de
       toute lecture de contenu pédagogique
-- [ ] Écrans d'accès contrôlé différenciés par motif : `hors_filiere`,
+- [x] Écrans d'accès contrôlé différenciés par motif : `hors_filiere`,
       `non_souscrit`, `expire`
-- [ ] Index composite `abonnement_matiere (utilisateur_id, matiere_id, statut)`
-- [ ] `journal_admin` sur les actions sensibles (activation, modification,
+- [x] Indexation du chemin d'accès : `abonnement (utilisateur_id, statut)`,
+      l'unique `abonnement_matiere (abonnement_id, matiere_id)` et
+      `abonnement_matiere (matiere_id, date_expiration)`. Formulation corrigée
+      pendant le lot 2 : `abonnement_matiere` n'a ni `utilisateur_id` ni
+      `statut` propres (voir architecture 5.9)
+- [x] `journal_admin` sur les actions sensibles (activation, modification,
       suppression)
 
 **Critère de sortie.** Un test d'intégration prouve qu'un élève sans abonnement
