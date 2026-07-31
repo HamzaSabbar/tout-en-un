@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/db";
-import type { Resultat } from "@/modules/contenu/resultat";
+import type { Resultat } from "@/lib/resultat";
 
 export const creerFiliereSchema = z.object({
   code: z.string().trim().min(1).max(20),
@@ -60,6 +60,14 @@ export async function modifierFiliere(id: bigint, input: unknown): Promise<Resul
 
 export function listerFilieres() {
   return prisma.filiere.findMany({ orderBy: { ordre: "asc" } });
+}
+
+export function listerFilieresActives() {
+  return prisma.filiere.findMany({
+    where: { actif: true },
+    orderBy: { ordre: "asc" },
+    select: { id: true, libelle: true },
+  });
 }
 
 export function listerFilieresAvecMatieres() {

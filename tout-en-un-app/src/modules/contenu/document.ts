@@ -2,7 +2,7 @@ import { randomBytes } from "node:crypto";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { storageService } from "@/lib/storage/storage";
-import type { Resultat } from "@/modules/contenu/resultat";
+import type { Resultat } from "@/lib/resultat";
 
 const TYPES_DOCUMENT = [
   "cours_pdf",

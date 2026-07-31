@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/db";
-import type { Resultat } from "@/modules/contenu/resultat";
+import type { Resultat } from "@/lib/resultat";
 
 export const creerMatiereSchema = z.object({
   code: z.string().trim().min(1).max(20),
@@ -60,6 +60,19 @@ export function listerMatieres() {
   return prisma.matiere.findMany({
     where: { supprime_le: null },
     orderBy: { ordre: "asc" },
+  });
+}
+
+// Catalogue proposé à un élève : matières publiées de sa filière.
+export function listerMatieresDeFiliere(filiereId: bigint) {
+  return prisma.matiere.findMany({
+    where: {
+      supprime_le: null,
+      statut: "publie",
+      filieres: { some: { filiere_id: filiereId } },
+    },
+    orderBy: { ordre: "asc" },
+    select: { id: true, libelle: true },
   });
 }
 

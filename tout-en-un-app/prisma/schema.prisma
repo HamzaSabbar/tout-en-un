@@ -34,6 +34,30 @@ enum TypeDocument {
   @@map("type_document")
 }
 
+enum StatutAbonnement {
+  en_attente
+  actif
+  expire
+  annule
+
+  @@map("statut_abonnement")
+}
+
+enum StatutPaiement {
+  en_attente
+  paye
+
+  @@map("statut_paiement")
+}
+
+enum StatutDemande {
+  en_attente
+  traitee
+  refusee
+
+  @@map("statut_demande")
+}
+
 model Utilisateur {
   id                 BigInt    @id @default(autoincrement())
   nom                String
@@ -43,15 +67,22 @@ model Utilisateur {
   ville              String?
   mot_de_passe_hash  String
   role               Role      @default(eleve)
+  filiere_id         BigInt?
   actif              Boolean   @default(true)
   derniere_connexion DateTime?
   cree_le            DateTime  @default(now())
 
-  sessions               SessionUtilisateur[]
+  filiere                 Filiere?                @relation(fields: [filiere_id], references: [id])
+  sessions                SessionUtilisateur[]
   jetons_reinitialisation JetonReinitialisation[]
-  cours_enseignes        Cours[]
-  fichiers_televerses    Fichier[]
+  cours_enseignes         Cours[]
+  fichiers_televerses     Fichier[]
+  abonnements             Abonnement[]
+  demandes_matiere        DemandeMatiere[]        @relation("demandeur")
+  demandes_traitees       DemandeMatiere[]        @relation("traitant")
+  actions_admin           JournalAdmin[]
 
+  @@index([filiere_id])
   @@map("utilisateur")
 }
 
@@ -93,6 +124,7 @@ model Filiere {
   actif   Boolean @default(true)
 
   matieres FiliereMatiere[]
+  eleves   Utilisateur[]
 
   @@map("filiere")
 }
@@ -108,9 +140,11 @@ model Matiere {
   ordre       Int      @default(0)
   supprime_le DateTime?
 
-  filieres   FiliereMatiere[]
-  chapitres  Chapitre[]
-  documents  Document[]
+  filieres            FiliereMatiere[]
+  chapitres           Chapitre[]
+  documents           Document[]
+  abonnements_matiere AbonnementMatiere[]
+  demandes            DemandeMatiere[]
 
   @@map("matiere")
 }
@@ -216,4 +250,96 @@ model Document {
   fichier  Fichier   @relation(fields: [fichier_id], references: [id])
 
   @@map("document")
+}
+
+model Offre {
+  id          BigInt    @id @default(autoincrement())
+  libelle     String
+  description String?
+  duree_jours Int
+  nb_matieres Int
+  prix        Decimal   @db.Decimal(10, 2)
+  actif       Boolean   @default(true)
+  supprime_le DateTime?
+
+  abonnements Abonnement[]
+
+  @@map("offre")
+}
+
+model Abonnement {
+  id                 BigInt           @id @default(autoincrement())
+  utilisateur_id     BigInt
+  offre_id           BigInt
+  date_debut         DateTime?
+  date_fin           DateTime?
+  statut             StatutAbonnement @default(en_attente)
+  montant            Decimal          @db.Decimal(10, 2)
+  paiement_statut    StatutPaiement   @default(en_attente)
+  reference_paiement String?
+  note_admin         String?
+  cree_le            DateTime         @default(now())
+
+  utilisateur Utilisateur         @relation(fields: [utilisateur_id], references: [id])
+  offre       Offre               @relation(fields: [offre_id], references: [id])
+  matieres    AbonnementMatiere[]
+  demandes    DemandeMatiere[]
+
+  @@index([utilisateur_id, statut])
+  @@map("abonnement")
+}
+
+// L'accès se joue ici, matière par matière, jamais au niveau de l'abonnement.
+// Volontairement sans utilisateur_id ni statut dupliqués (architecture 5.10) :
+// une copie du statut pourrait se désynchroniser d'une annulation d'abonnement.
+model AbonnementMatiere {
+  id              BigInt   @id @default(autoincrement())
+  abonnement_id   BigInt
+  matiere_id      BigInt
+  date_activation DateTime @default(now())
+  date_expiration DateTime
+
+  abonnement Abonnement @relation(fields: [abonnement_id], references: [id])
+  matiere    Matiere    @relation(fields: [matiere_id], references: [id])
+
+  @@unique([abonnement_id, matiere_id])
+  @@index([matiere_id, date_expiration])
+  @@map("abonnement_matiere")
+}
+
+model DemandeMatiere {
+  id             BigInt        @id @default(autoincrement())
+  utilisateur_id BigInt
+  matiere_id     BigInt
+  abonnement_id  BigInt
+  statut         StatutDemande @default(en_attente)
+  message        String?
+  cree_le        DateTime      @default(now())
+  traite_le      DateTime?
+  traite_par     BigInt?
+
+  utilisateur Utilisateur  @relation("demandeur", fields: [utilisateur_id], references: [id])
+  matiere     Matiere      @relation(fields: [matiere_id], references: [id])
+  abonnement  Abonnement   @relation(fields: [abonnement_id], references: [id])
+  traitant    Utilisateur? @relation("traitant", fields: [traite_par], references: [id])
+
+  @@index([statut, cree_le])
+  @@map("demande_matiere")
+}
+
+model JournalAdmin {
+  id             BigInt   @id @default(autoincrement())
+  utilisateur_id BigInt
+  action         String
+  entite         String
+  entite_id      BigInt
+  avant          Json?
+  apres          Json?
+  cree_le        DateTime @default(now())
+
+  utilisateur Utilisateur @relation(fields: [utilisateur_id], references: [id])
+
+  @@index([entite, entite_id])
+  @@index([utilisateur_id, cree_le])
+  @@map("journal_admin")
 }

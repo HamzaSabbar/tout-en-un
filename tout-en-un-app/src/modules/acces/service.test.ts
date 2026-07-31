@@ -2,6 +2,8 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 
 const findUniqueUtilisateur = vi.fn();
 const updateUtilisateur = vi.fn();
+const createUtilisateur = vi.fn();
+const findFirstFiliere = vi.fn();
 const createJeton = vi.fn();
 const findUniqueJeton = vi.fn();
 const updateJeton = vi.fn();
@@ -14,6 +16,10 @@ vi.mock("@/lib/db", () => ({
     utilisateur: {
       findUnique: (...args: unknown[]) => findUniqueUtilisateur(...args),
       update: (...args: unknown[]) => updateUtilisateur(...args),
+      create: (...args: unknown[]) => createUtilisateur(...args),
+    },
+    filiere: {
+      findFirst: (...args: unknown[]) => findFirstFiliere(...args),
     },
     jetonReinitialisation: {
       create: (...args: unknown[]) => createJeton(...args),
@@ -37,8 +43,58 @@ vi.mock("@/lib/env", () => ({
 
 import {
   demanderReinitialisation,
+  register,
   reinitialiserMotDePasse,
 } from "@/modules/acces/service";
+
+const INSCRIPTION_SANS_FILIERE = {
+  nom: "Alami",
+  prenom: "Sara",
+  email: "sara@example.com",
+  telephone: "0612345678",
+  mot_de_passe: "mot-de-passe-long",
+};
+
+const INSCRIPTION = { ...INSCRIPTION_SANS_FILIERE, filiere_id: "2" };
+
+describe("register", () => {
+  beforeEach(() => {
+    findFirstFiliere.mockReset();
+    createUtilisateur.mockReset();
+    findFirstFiliere.mockResolvedValue({ id: BigInt(2) });
+    createUtilisateur.mockResolvedValue({ id: BigInt(1) });
+  });
+
+  it("refuse une inscription sans filière", async () => {
+    const resultat = await register(INSCRIPTION_SANS_FILIERE);
+
+    expect(resultat).toEqual({ succes: false, erreur: "Formulaire invalide." });
+    expect(createUtilisateur).not.toHaveBeenCalled();
+  });
+
+  it("refuse une filière inexistante ou désactivée", async () => {
+    findFirstFiliere.mockResolvedValue(null);
+
+    const resultat = await register(INSCRIPTION);
+
+    expect(resultat).toEqual({ succes: false, erreur: "Filière invalide." });
+    expect(createUtilisateur).not.toHaveBeenCalled();
+  });
+
+  it("rattache le compte créé à la filière choisie", async () => {
+    const resultat = await register(INSCRIPTION);
+
+    expect(resultat).toEqual({ succes: true, id: "1" });
+    expect(findFirstFiliere).toHaveBeenCalledWith({
+      where: { id: BigInt(2), actif: true },
+      select: { id: true },
+    });
+    expect(createUtilisateur.mock.calls[0][0].data).toMatchObject({
+      filiere_id: BigInt(2),
+      role: "eleve",
+    });
+  });
+});
 
 function jetonFactice(
   overrides: Partial<{

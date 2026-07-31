@@ -10,12 +10,14 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CreerChapitreForm } from "./creer-chapitre-form";
+import { requirePermission } from "@/modules/acces/require-auth";
 
 export default async function ChapitresPage({
   params,
 }: {
   params: Promise<{ matiereId: string }>;
 }) {
+  await requirePermission("contenu:gerer");
   const { matiereId } = await params;
   const matiere = await obtenirMatiere(BigInt(matiereId));
   if (!matiere) {

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import type { Resultat } from "@/modules/contenu/resultat";
+import type { Resultat } from "@/lib/resultat";
 
 export const creerChapitreSchema = z.object({
   matiere_id: z.coerce.bigint(),
@@ -38,6 +38,16 @@ export function listerChapitres(matiereId: bigint) {
   return prisma.chapitre.findMany({
     where: { matiere_id: matiereId, supprime_le: null },
     orderBy: { ordre: "asc" },
+  });
+}
+
+// Vue élève : les brouillons sont écartés dans la requête, jamais à l'affichage
+// (invariant 6). L'appelant doit avoir vérifié l'accès à la matière en amont.
+export function listerChapitresPublies(matiereId: bigint) {
+  return prisma.chapitre.findMany({
+    where: { matiere_id: matiereId, supprime_le: null, statut: "publie" },
+    orderBy: { ordre: "asc" },
+    select: { id: true, libelle: true, description: true, ordre: true },
   });
 }
 

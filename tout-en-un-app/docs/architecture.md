@@ -297,8 +297,15 @@ correction_incomprise, erreur_suspectee, autre.
 
 ### 5.9 Index et contraintes obligatoires
 
-- Index composite sur `abonnement_matiere (utilisateur_id, matiere_id, statut)` :
-  requête la plus fréquente de toute l'application.
+- Chemin d'accès matière, requête la plus fréquente de toute l'application :
+  `abonnement (utilisateur_id, statut)`, puis l'unique
+  `abonnement_matiere (abonnement_id, matiere_id)`, plus
+  `abonnement_matiere (matiere_id, date_expiration)`. Décision du lot 2 :
+  `abonnement_matiere` ne porte ni `utilisateur_id` ni `statut`, conformément au
+  schéma de référence en 5.10. Dupliquer le statut du parent imposerait une
+  double écriture à chaque annulation, avec un risque de statut périmé qu'un
+  contrôle d'accès ne peut pas accepter. Ces trois index donnent le même plan
+  d'exécution en deux lookups indexés.
 - Index sur `(cours_id, statut, ordre)` pour `video`, `exercice` et
   `extrait_national` : affichage d'un cours en une seule passe.
 - Index sur `evenement_apprentissage (utilisateur_id, cree_le)` pour les vues

@@ -20,6 +20,9 @@ jobs:
   ci:
     runs-on: ubuntu-latest
 
+    # Base éphémère, détruite avec le job. Les tests de bout en bout écrivent et
+    # suppriment massivement : ils ne doivent jamais viser une base partagée.
+    # e2e/support/base-test.ts refuse de démarrer sur un hôte non local.
     services:
       postgres:
         image: postgres:16
@@ -36,6 +39,8 @@ jobs:
           --health-retries=5
 
     env:
+      # Base du service ci-dessus, et rien d'autre : aucun secret Supabase n'est
+      # exposé au job, donc aucune exécution ne peut atteindre la base partagée.
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
       DIRECT_URL: postgresql://postgres:postgres@localhost:5432/postgres
 
@@ -73,7 +78,7 @@ jobs:
       - name: Installer Chromium pour Playwright
         run: pnpm exec playwright install --with-deps chromium
 
-      - name: Test de bout en bout (build de production)
+      - name: Test de bout en bout (build de production, base éphémère)
         run: npm run test:e2e
 
       - name: Archiver le rapport Playwright en cas d'échec

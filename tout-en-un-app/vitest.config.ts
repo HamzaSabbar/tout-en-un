@@ -12,6 +12,8 @@ export default defineConfig({
   },
   test: {
     environment: "node",
-    exclude: ["**/node_modules/**", "e2e/**"],
+    // Les scénarios Playwright (`*.spec.ts`) sont exclus, mais le support de
+    // test sous e2e/support/ a ses propres tests unitaires, qui tournent ici.
+    exclude: ["**/node_modules/**", "e2e/**/*.spec.ts"],
   },
 });
