@@ -116,12 +116,19 @@ model SessionUtilisateur {
   @@map("session_utilisateur")
 }
 
+// `cree_le` est nullable sur les tables de contenu, contrairement aux autres
+// tables. Les lignes antérieures à la migration n'ont pas de date connue : leur
+// donner l'heure de la migration affirmerait une date fausse, ce qui est
+// précisément ce qui a rendu l'audit des données de test laborieux. NULL veut
+// dire « date inconnue ». La colonne pourra passer en NOT NULL une fois ces
+// lignes traitées.
 model Filiere {
   id      BigInt  @id @default(autoincrement())
   code    String  @unique
   libelle String
   ordre   Int     @default(0)
-  actif   Boolean @default(true)
+  actif   Boolean   @default(true)
+  cree_le DateTime? @default(now())
 
   matieres FiliereMatiere[]
   eleves   Utilisateur[]
@@ -137,7 +144,8 @@ model Matiere {
   icone       String?
   couleur     String?
   statut      Statut   @default(brouillon)
-  ordre       Int      @default(0)
+  ordre       Int       @default(0)
+  cree_le     DateTime? @default(now())
   supprime_le DateTime?
 
   filieres            FiliereMatiere[]
@@ -169,6 +177,7 @@ model Chapitre {
   icone       String?
   ordre       Int       @default(0)
   statut      Statut    @default(brouillon)
+  cree_le     DateTime? @default(now())
   supprime_le DateTime?
 
   matiere   Matiere    @relation(fields: [matiere_id], references: [id])
@@ -188,6 +197,7 @@ model Cours {
   statut         Statut    @default(brouillon)
   professeur_id  BigInt?
   publie_le      DateTime?
+  cree_le        DateTime? @default(now())
   supprime_le    DateTime?
 
   chapitre   Chapitre     @relation(fields: [chapitre_id], references: [id])
@@ -209,6 +219,7 @@ model Video {
   video_ref       String
   ordre           Int       @default(0)
   statut          Statut    @default(brouillon)
+  cree_le         DateTime? @default(now())
   supprime_le     DateTime?
 
   cours Cours @relation(fields: [cours_id], references: [id])
@@ -260,6 +271,7 @@ model Offre {
   nb_matieres Int
   prix        Decimal   @db.Decimal(10, 2)
   actif       Boolean   @default(true)
+  cree_le     DateTime? @default(now())
   supprime_le DateTime?
 
   abonnements Abonnement[]

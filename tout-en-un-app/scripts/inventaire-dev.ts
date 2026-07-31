@@ -8,9 +8,10 @@ import { PrismaClient } from "../src/generated/prisma/index.js";
 //
 //   node scripts/inventaire-dev.ts [chemin/rapport.md]
 //
-// Les tables de contenu (filiere, matiere, chapitre, cours, video, offre) n'ont
-// pas de colonne `cree_le` dans le schéma. Leur date de création n'est donc pas
-// lisible directement. Deux substituts, tous deux signalés comme tels :
+// Les tables de contenu portent `cree_le` depuis la migration
+// `ajoute_cree_le_contenu`, mais elle est nulle pour les lignes antérieures :
+// leur donner l'heure de la migration aurait affirmé une date fausse. Pour ces
+// lignes, deux substituts, tous deux signalés comme tels :
 //   - l'horodatage que les fixtures de test embarquent dans leur libellé ou leur
 //     code (les scénarios utilisent Date.now()), qui donne la date réelle ;
 //   - l'ordre des identifiants, qui donne une chronologie relative.
@@ -99,12 +100,12 @@ async function principal(): Promise<void> {
         ["Table", "Lignes", "Colonne de date"],
         [
           ["utilisateur", String(utilisateurs.length), "`cree_le`"],
-          ["filiere", String(filieres.length), "aucune"],
-          ["matiere", String(matieres.length), "aucune"],
-          ["chapitre", String(chapitres.length), "aucune"],
-          ["cours", String(cours.length), "`publie_le` si publié"],
-          ["video", String(videos.length), "aucune"],
-          ["offre", String(offres.length), "aucune"],
+          ["filiere", String(filieres.length), "`cree_le`"],
+          ["matiere", String(matieres.length), "`cree_le`"],
+          ["chapitre", String(chapitres.length), "`cree_le`"],
+          ["cours", String(cours.length), "`cree_le`, `publie_le`"],
+          ["video", String(videos.length), "`cree_le`"],
+          ["offre", String(offres.length), "`cree_le`"],
           ["filiere_matiere", String(liens), "aucune"],
           ["document", String(documents), "aucune"],
           ["fichier", String(fichiers), "`cree_le`"],
@@ -129,12 +130,13 @@ async function principal(): Promise<void> {
     sections.push("## Filières");
     sections.push(
       tableau(
-        ["id", "code", "libellé", "actif", "date déduite du libellé"],
+        ["id", "code", "libellé", "actif", "cree_le", "date déduite du libellé"],
         filieres.map((f) => [
           String(f.id),
           `\`${echapper(f.code)}\``,
           echapper(f.libelle),
           f.actif ? "oui" : "non",
+          f.cree_le ? f.cree_le.toISOString() : "inconnue",
           dateEmbarquee(f.code, f.libelle) ?? "—",
         ]),
       ),
@@ -143,13 +145,14 @@ async function principal(): Promise<void> {
     sections.push("## Matières");
     sections.push(
       tableau(
-        ["id", "code", "libellé", "statut", "supprimée le", "date déduite"],
+        ["id", "code", "libellé", "statut", "supprimée le", "cree_le", "date déduite"],
         matieres.map((m) => [
           String(m.id),
           `\`${echapper(m.code)}\``,
           echapper(m.libelle),
           m.statut,
           m.supprime_le ? m.supprime_le.toISOString() : "—",
+          m.cree_le ? m.cree_le.toISOString() : "inconnue",
           dateEmbarquee(m.code, m.libelle) ?? "—",
         ]),
       ),
@@ -158,12 +161,13 @@ async function principal(): Promise<void> {
     sections.push("## Chapitres");
     sections.push(
       tableau(
-        ["id", "matiere_id", "libellé", "statut", "date déduite"],
+        ["id", "matiere_id", "libellé", "statut", "cree_le", "date déduite"],
         chapitres.map((c) => [
           String(c.id),
           String(c.matiere_id),
           echapper(c.libelle),
           c.statut,
+          c.cree_le ? c.cree_le.toISOString() : "inconnue",
           dateEmbarquee(c.libelle) ?? "—",
         ]),
       ),
@@ -172,7 +176,7 @@ async function principal(): Promise<void> {
     sections.push("## Cours");
     sections.push(
       tableau(
-        ["id", "chapitre", "titre", "statut", "professeur_id", "publié le", "date déduite"],
+        ["id", "chapitre", "titre", "statut", "professeur_id", "publié le", "cree_le", "date déduite"],
         cours.map((c) => [
           String(c.id),
           echapper(c.chapitre.libelle),
@@ -180,6 +184,7 @@ async function principal(): Promise<void> {
           c.statut,
           c.professeur_id === null ? "**null**" : String(c.professeur_id),
           c.publie_le ? c.publie_le.toISOString() : "—",
+          c.cree_le ? c.cree_le.toISOString() : "inconnue",
           dateEmbarquee(c.titre, c.chapitre.libelle) ?? "—",
         ]),
       ),
@@ -188,7 +193,7 @@ async function principal(): Promise<void> {
     sections.push("## Vidéos");
     sections.push(
       tableau(
-        ["id", "cours_id", "titre", "fournisseur", "video_ref", "statut", "date déduite"],
+        ["id", "cours_id", "titre", "fournisseur", "video_ref", "statut", "cree_le", "date déduite"],
         videos.map((v) => [
           String(v.id),
           String(v.cours_id),
@@ -196,6 +201,7 @@ async function principal(): Promise<void> {
           echapper(v.fournisseur),
           `\`${echapper(v.video_ref)}\``,
           v.statut,
+          v.cree_le ? v.cree_le.toISOString() : "inconnue",
           dateEmbarquee(v.titre) ?? "—",
         ]),
       ),
@@ -204,7 +210,7 @@ async function principal(): Promise<void> {
     sections.push("## Offres");
     sections.push(
       tableau(
-        ["id", "libellé", "durée (j)", "nb matières", "prix", "actif", "date déduite"],
+        ["id", "libellé", "durée (j)", "nb matières", "prix", "actif", "cree_le", "date déduite"],
         offres.map((o) => [
           String(o.id),
           echapper(o.libelle),
@@ -212,6 +218,7 @@ async function principal(): Promise<void> {
           String(o.nb_matieres),
           o.prix.toString(),
           o.actif ? "oui" : "non",
+          o.cree_le ? o.cree_le.toISOString() : "inconnue",
           dateEmbarquee(o.libelle) ?? "—",
         ]),
       ),
