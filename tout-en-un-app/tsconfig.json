@@ -11,6 +11,11 @@
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
+    // Les scripts de prisma/ et scripts/ tournent sous Node hors du bundler Next,
+    // qui seul résout l'alias `@/`. Ils importent donc leurs dépendances par
+    // chemin relatif avec l'extension `.ts`, que Node 24 sait exécuter. Autorisé
+    // ici parce que `noEmit` est actif : rien n'est compilé vers du JavaScript.
+    "allowImportingTsExtensions": true,
     "jsx": "preserve",
     "incremental": true,
     "plugins": [

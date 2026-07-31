@@ -17,8 +17,14 @@ function hoteBase(url: string): string {
 
 // Les tests écrivent et suppriment massivement. Les laisser atteindre la base
 // partagée de développement y accumulerait des comptes et du contenu factices,
-// et un nettoyage qui déraille y détruirait du travail réel. On exige donc une
-// base locale ou éphémère, comme le service postgres du workflow CI.
+// et le nettoyage y détruirait du travail réel : c'est arrivé une fois, tous les
+// comptes de la base de développement ont été supprimés. On exige donc une base
+// locale ou éphémère, comme le service postgres du workflow CI.
+//
+// La dérogation demande deux confirmations indépendantes, dont une qui nomme
+// l'hôte exact. Une variable seule, oubliée dans un profil de shell ou un
+// gestionnaire d'environnement, ne peut plus ouvrir la porte à elle seule : la
+// seconde cesse de correspondre dès que la base change.
 export function exigerBaseDeTest(): void {
   const url = process.env.DATABASE_URL;
   if (!url) {
@@ -28,24 +34,38 @@ export function exigerBaseDeTest(): void {
     );
   }
 
-  if (process.env.E2E_BASE_DISTANTE_AUTORISEE === "oui") {
+  const hote = hoteBase(url);
+  if (HOTES_LOCAUX.includes(hote)) {
+    return;
+  }
+
+  const premiere = process.env.E2E_BASE_DISTANTE_AUTORISEE === "oui";
+  const seconde = process.env.E2E_CONFIRMER_HOTE === hote;
+
+  if (premiere && seconde) {
     console.warn(
-      `[e2e] base distante autorisée explicitement (${hoteBase(url)}). ` +
-        "À n'utiliser que ponctuellement : la base de développement n'est pas un bac à sable.",
+      `[e2e] base distante « ${hote} » autorisée par double confirmation. ` +
+        "Les scénarios vont y créer puis y supprimer des données.",
     );
     return;
   }
 
-  const hote = hoteBase(url);
-  if (!HOTES_LOCAUX.includes(hote)) {
-    throw new Error(
-      `Les tests de bout en bout refusent de tourner sur la base distante « ${hote} ».\n` +
-        "Utilise une base PostgreSQL dédiée : copie .env.test.example vers .env.test,\n" +
-        "ou lance `docker run --rm -p 5432:5432 -e POSTGRES_PASSWORD=postgres postgres:16`,\n" +
-        "puis `npx prisma migrate deploy`.\n" +
-        "En dernier recours, E2E_BASE_DISTANTE_AUTORISEE=oui lève ce garde-fou.",
-    );
-  }
+  const manquantes = [
+    premiere ? null : "E2E_BASE_DISTANTE_AUTORISEE=oui",
+    seconde ? null : `E2E_CONFIRMER_HOTE=${hote}`,
+  ].filter((valeur): valeur is string => valeur !== null);
+
+  throw new Error(
+    `Les tests de bout en bout refusent de tourner sur la base distante « ${hote} ».\n` +
+      "Utilise une base PostgreSQL dédiée : copie .env.test.example vers .env.test,\n" +
+      "ou lance `docker run --rm -p 5432:5432 -e POSTGRES_PASSWORD=postgres postgres:16`,\n" +
+      "puis `npx prisma migrate deploy`.\n" +
+      "\n" +
+      "Passer outre demande deux confirmations explicites, il en manque " +
+      `${manquantes.length} : ${manquantes.join(" et ")}.\n` +
+      "Les scénarios suppriment des données sur la base visée : ne fais cela que " +
+      "sur une base dont la perte est acceptable.",
+  );
 }
 
 // Suppression dans l'ordre des dépendances : Prisma n'a pas de cascade ici, et
