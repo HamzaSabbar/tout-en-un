@@ -12,6 +12,7 @@
     "test:e2e": "playwright test",
     "seed:admin": "node prisma/seed-admin.ts",
     "inventaire": "node scripts/inventaire-dev.ts",
+    "menage:test": "node scripts/menage-donnees-test.ts",
     "postinstall": "prisma generate"
   },
   "dependencies": {

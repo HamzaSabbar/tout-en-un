@@ -25,6 +25,9 @@ Lots de développement et critères de sortie : `docs/roadmap.md`.
   généré et affiché une seule fois. Jamais de mot de passe dans le code
 - `npm run inventaire [chemin.md]` : inventaire en lecture seule de la base
   visée, utile avant de décider quoi conserver
+- `npm run menage:test [-- --rapport chemin.md]` : identifie les données
+  laissées par les tests et propose leur suppression. **Simulation par défaut**,
+  rien n'est écrit sans `--supprimer --confirmer-suppression`
 
 ### Base des tests de bout en bout
 
@@ -77,6 +80,13 @@ de la base de développement.
 
 - Tables et colonnes en français, sans accent, au singulier, minuscules avec
   tirets bas : `filiere`, `matiere`, `chapitre`, `cours`, `abonnement_matiere`.
+- Toute nouvelle table porte `cree_le DateTime @default(now())`. Sans elle, une
+  ligne n'est pas datable et un audit doit deviner. Sur les tables de contenu la
+  colonne est nullable, le temps que les lignes antérieures à son ajout soient
+  traitées : NULL veut dire « date inconnue », jamais « créée maintenant ».
+- Ajouter une colonne datée à une table déjà peuplée se fait en deux temps,
+  `ADD COLUMN` sans défaut puis `SET DEFAULT` : la forme combinée renseigne les
+  lignes existantes et leur attribue une date de création fausse.
 - Code, variables et commentaires en anglais. Seules les entités métier gardent
   leur nom français.
 - Une page ou une route ne parle jamais à Prisma directement : elle appelle un
