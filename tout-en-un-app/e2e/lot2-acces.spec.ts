@@ -1,9 +1,16 @@
-import "dotenv/config";
+import "./support/env";
 import { test, expect, type Page } from "@playwright/test";
 import { prisma } from "@/lib/db";
 import { hashPassword } from "@/lib/auth/password";
+import {
+  compterResiduE2E,
+  nettoyerDonneesE2E,
+  PREFIXE_E2E,
+} from "./support/base-test";
 
 const MOT_DE_PASSE = "mot-de-passe-eleve-123";
+
+test.afterEach(nettoyerDonneesE2E);
 
 async function connecter(page: Page, email: string) {
   await page.context().clearCookies();
@@ -18,10 +25,17 @@ async function connecter(page: Page, email: string) {
 // pas obtenir tant qu'aucun abonnement actif ne couvre la matière.
 async function seedContenu(suffixe: number) {
   const filiere = await prisma.filiere.create({
-    data: { code: `F${suffixe}`, libelle: `Sciences Physiques ${suffixe}` },
+    data: {
+      code: `${PREFIXE_E2E}-F-${suffixe}`,
+      libelle: `${PREFIXE_E2E} Sciences Physiques ${suffixe}`,
+    },
   });
   const matiere = await prisma.matiere.create({
-    data: { code: `M${suffixe}`, libelle: `Physique-Chimie ${suffixe}`, statut: "publie" },
+    data: {
+      code: `${PREFIXE_E2E}-M-${suffixe}`,
+      libelle: `Physique-Chimie ${suffixe}`,
+      statut: "publie",
+    },
   });
   await prisma.filiereMatiere.create({
     data: { filiere_id: filiere.id, matiere_id: matiere.id },
@@ -84,7 +98,12 @@ test("un abonnement expiré donne le motif expire et ferme l'API", async ({ page
   const { eleve, email } = await seedEleve(suffixe, filiere.id);
 
   const offre = await prisma.offre.create({
-    data: { libelle: `Offre ${suffixe}`, duree_jours: 90, nb_matieres: 1, prix: 600 },
+    data: {
+      libelle: `${PREFIXE_E2E} Offre ${suffixe}`,
+      duree_jours: 90,
+      nb_matieres: 1,
+      prix: 600,
+    },
   });
   const abonnement = await prisma.abonnement.create({
     data: {
@@ -118,7 +137,10 @@ test("une matière hors filière donne le motif hors_filiere", async ({ page }) 
   const suffixe = Date.now();
   const { matiere, chapitre } = await seedContenu(suffixe);
   const autreFiliere = await prisma.filiere.create({
-    data: { code: `FB${suffixe}`, libelle: `SVT ${suffixe}` },
+    data: {
+      code: `${PREFIXE_E2E}-FB-${suffixe}`,
+      libelle: `${PREFIXE_E2E} SVT ${suffixe}`,
+    },
   });
   const { email } = await seedEleve(suffixe, autreFiliere.id);
 
@@ -183,12 +205,12 @@ test("l'activation manuelle par l'admin ouvre l'accès immédiatement", async ({
   // L'admin publie une offre.
   await connecter(page, emailAdmin);
   await page.goto("/abonnements/offres");
-  await page.getByLabel("Libellé").fill(`Trimestre ${suffixe}`);
+  await page.getByLabel("Libellé").fill(`${PREFIXE_E2E} Trimestre ${suffixe}`);
   await page.getByLabel("Durée (jours)").fill("90");
   await page.getByLabel("Nb matières").fill("1");
   await page.getByLabel("Prix (MAD)").fill("600");
   await page.getByRole("button", { name: "Créer" }).click();
-  await expect(page.getByText(`Trimestre ${suffixe}`)).toBeVisible();
+  await expect(page.getByText(`${PREFIXE_E2E} Trimestre ${suffixe}`)).toBeVisible();
 
   // L'élève demande l'accès à la matière.
   await connecter(page, email);
@@ -226,4 +248,18 @@ test("l'activation manuelle par l'admin ouvre l'accès immédiatement", async ({
     orderBy: { cree_le: "desc" },
   });
   expect(trace).not.toBeNull();
+});
+
+// Ce scénario tourne en dernier : il vérifie que le nettoyage des scénarios
+// précédents n'a rien laissé derrière lui, puis que le sien part aussi.
+test("les scénarios ne laissent aucune donnée derrière eux", async () => {
+  expect(await compterResiduE2E()).toBe(0);
+
+  const suffixe = Date.now();
+  const { filiere } = await seedContenu(suffixe);
+  await seedEleve(suffixe, filiere.id);
+  expect(await compterResiduE2E()).toBeGreaterThan(0);
+
+  await nettoyerDonneesE2E();
+  expect(await compterResiduE2E()).toBe(0);
 });

@@ -15,9 +15,30 @@ Lots de développement et critères de sortie : `docs/roadmap.md`.
   changements
 - `npm test` : suite de tests. Préfère lancer un seul fichier de test pendant le
   développement
+- `npm run test:e2e` : scénarios Playwright. Ils exigent une base PostgreSQL
+  dédiée et refusent une base distante (voir ci-dessous)
 - `npx prisma migrate dev --name <nom>` : toute évolution du schéma. Jamais de
   SQL manuel, jamais de `db push` sur une base partagée
 - `npx prisma studio` : inspection de la base locale
+
+### Base des tests de bout en bout
+
+Les scénarios créent et suppriment des comptes, des filières et du contenu. Ils
+ne doivent jamais viser la base de développement partagée : copie
+`.env.test.example` vers `.env.test` et lance une base jetable, l'équivalent du
+service `postgres` du workflow CI.
+
+```sh
+docker run --rm -d --name tout-en-un-test -p 5432:5432 \
+  -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres postgres:16
+npx prisma migrate deploy
+```
+
+`e2e/support/base-test.ts` arrête la suite si `DATABASE_URL` pointe ailleurs que
+sur un hôte local. Chaque scénario se nettoie ensuite via `nettoyerDonneesE2E()`
+en `afterEach`, qui supprime uniquement les lignes marquées du préfixe `E2E` :
+toute fixture nouvelle doit porter ce préfixe dans son code, son libellé ou son
+email, sinon elle survit au nettoyage.
 
 ## Règles non négociables
 

@@ -1,12 +1,17 @@
-import "dotenv/config";
+import "./support/env";
 import { test, expect, type Page } from "@playwright/test";
 import { prisma } from "@/lib/db";
+import { nettoyerDonneesE2E, PREFIXE_E2E } from "./support/base-test";
+
+test.afterEach(nettoyerDonneesE2E);
 
 // La filière est obligatoire à l'inscription depuis le lot 2 : chaque test en
 // crée une pour pouvoir la sélectionner dans le formulaire.
 async function creerFiliere(suffixe: number): Promise<string> {
-  const libelle = `Sciences Physiques ${suffixe}`;
-  await prisma.filiere.create({ data: { code: `FA${suffixe}`, libelle } });
+  const libelle = `${PREFIXE_E2E} Sciences Physiques ${suffixe}`;
+  await prisma.filiere.create({
+    data: { code: `${PREFIXE_E2E}-FA-${suffixe}`, libelle },
+  });
   return libelle;
 }
 

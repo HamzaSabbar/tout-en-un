@@ -1,7 +1,10 @@
-import "dotenv/config";
+import "./support/env";
 import { test, expect, type Page } from "@playwright/test";
 import { prisma } from "@/lib/db";
 import { hashPassword } from "@/lib/auth/password";
+import { nettoyerDonneesE2E, PREFIXE_E2E } from "./support/base-test";
+
+test.afterEach(nettoyerDonneesE2E);
 
 async function connecter(page: Page, email: string, motDePasse: string) {
   await page.goto("/connexion");
@@ -15,10 +18,10 @@ test("un élève sans permission n'accède pas au back-office contenu", async ({
   const suffixe = Date.now();
   const email = `e2e-eleve+${suffixe}@test.local`;
   const motDePasse = "mot-de-passe-eleve-123";
-  const libelleFiliere = `Sciences Physiques ${suffixe}`;
+  const libelleFiliere = `${PREFIXE_E2E} Sciences Physiques ${suffixe}`;
 
   await prisma.filiere.create({
-    data: { code: `FE${suffixe}`, libelle: libelleFiliere },
+    data: { code: `${PREFIXE_E2E}-FE-${suffixe}`, libelle: libelleFiliere },
   });
 
   await page.goto("/inscription");
@@ -43,6 +46,7 @@ test("le professeur saisit une matière complète de bout en bout en brouillon, 
   const suffixe = Date.now();
   const email = `e2e-admin+${suffixe}@test.local`;
   const motDePasse = "mot-de-passe-admin-123";
+  const codeMatiere = `${PREFIXE_E2E}-M-${suffixe}`;
   const libelleMatiere = `Physique-Chimie ${suffixe}`;
   const libelleChapitre = `Mécanique ${suffixe}`;
   const titreCours = `La dérivée ${suffixe}`;
@@ -62,7 +66,7 @@ test("le professeur saisit une matière complète de bout en bout en brouillon, 
 
   // Matière, créée en brouillon par défaut.
   await page.goto("/contenu/matieres");
-  await page.getByLabel("Code").fill(`M${suffixe}`);
+  await page.getByLabel("Code").fill(codeMatiere);
   await page.getByLabel("Libellé").fill(libelleMatiere);
   await page.getByRole("button", { name: "Créer" }).click();
   const ligneMatiere = page.getByRole("listitem").filter({ hasText: libelleMatiere });
