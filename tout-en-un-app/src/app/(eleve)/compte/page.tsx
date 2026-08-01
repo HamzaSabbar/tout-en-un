@@ -9,6 +9,9 @@ export default async function ComptePage() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-6 p-8">
       <p className="text-lg">Bonjour {utilisateur.prenom}</p>
+      <Link href="/matieres" className="text-sm font-medium hover:underline">
+        Accéder à mes matières
+      </Link>
       <Link href="/demande-acces" className="text-sm font-medium hover:underline">
         Demander l&apos;accès à une matière
       </Link>

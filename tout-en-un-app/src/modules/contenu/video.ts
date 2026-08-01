@@ -8,7 +8,8 @@ export const creerVideoSchema = z.object({
   description: z.string().trim().max(2000).optional(),
   duree_secondes: z.coerce.number().int().min(0).optional(),
   fournisseur: z.string().trim().min(1).max(50),
-  video_ref: z.string().trim().min(1).max(200),
+  // Référence fournisseur neutre uniquement : une URL complète est interdite.
+  video_ref: z.string().trim().regex(/^[A-Za-z0-9_-]{6,64}$/),
   ordre: z.number().int().min(0).default(0),
 });
 export type CreerVideoInput = z.infer<typeof creerVideoSchema>;

@@ -43,6 +43,7 @@ jobs:
       # exposé au job, donc aucune exécution ne peut atteindre la base partagée.
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
       DIRECT_URL: postgresql://postgres:postgres@localhost:5432/postgres
+      APP_URL: http://localhost:3000
 
     steps:
       - name: Récupérer le dépôt
@@ -75,6 +76,12 @@ jobs:
       - name: Tests unitaires
         run: npm test
 
+      - name: Construire l'application
+        run: npm run build
+
+      - name: Vérifier le budget JavaScript élève
+        run: npm run budget:js
+
       - name: Installer Chromium pour Playwright
         run: pnpm exec playwright install --with-deps chromium
 
@@ -86,5 +93,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report
-          path: tout-en-un-app/test-results/
+          path: |
+            tout-en-un-app/playwright-report/
+            tout-en-un-app/test-results/
+          if-no-files-found: warn
           retention-days: 7

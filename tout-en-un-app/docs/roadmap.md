@@ -153,16 +153,25 @@ Architecture : sections 5.1, 6, 13.
 10 j, critique. Ouvrir l'espace élève en rendu serveur, mobile-first sur réseau
 4G irrégulier.
 
-- [ ] Choix de la matière, puis tableau de bord à quatre cartes : progression,
+- [x] Choix de la matière, puis tableau de bord à quatre cartes : progression,
       prochain live, dernière note, compte à rebours du national
-- [ ] Navigation chapitres puis cours puis ressources, en une requête agrégée par
+- [x] Navigation chapitres puis cours puis ressources, en une requête agrégée par
       page
-- [ ] Lecteur vidéo en chargement différé, avec restriction de domaine
-- [ ] Lecture des PDF par URL signée de 10 minutes, téléchargement traité comme
+- [x] Lecteur vidéo en chargement différé, avec restriction de domaine
+- [x] Lecture des PDF par URL signée de 10 minutes, téléchargement traité comme
       un droit distinct
-- [ ] Mise en cache des pages de structure, invalidation ciblée à la publication
+- [x] Mise en cache des pages de structure, invalidation ciblée à la publication
 - [ ] Index `(cours_id, statut, ordre)` sur `video`, `exercice`,
       `extrait_national`
+
+La route PDF et sa garde sont testables sans stockage, ainsi que la durée de
+signature de 600 secondes avec un stockage moqué. L'ouverture réelle d'un PDF
+reste non vérifiable tant que le bucket privé et `SUPABASE_STORAGE_*` ne sont pas
+provisionnés.
+
+L'index de `video` existe déjà. Les modèles `exercice` et `extrait_national`
+n'existent pas encore ; leurs index restent à créer dans leurs lots propriétaires
+sans introduire prématurément de nouvelles tables au lot 3.
 
 **Critère de sortie.** Un élève abonné parcourt une matière complète sur mobile,
 regarde une vidéo et ouvre un PDF. Aucune URL de fichier ou de vidéo n'apparaît

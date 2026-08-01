@@ -59,6 +59,9 @@ export default async function CoursDetailPage({
                 </Badge>
                 {video.statut === "brouillon" ? (
                   <form action={publierVideoAction}>
+                    <input type="hidden" name="matiere_id" value={matiereId} />
+                    <input type="hidden" name="chapitre_id" value={chapitreId} />
+                    <input type="hidden" name="cours_id" value={coursId} />
                     <input type="hidden" name="video_id" value={video.id.toString()} />
                     <Button type="submit" size="sm">
                       Publier
@@ -66,6 +69,9 @@ export default async function CoursDetailPage({
                   </form>
                 ) : (
                   <form action={depublierVideoAction}>
+                    <input type="hidden" name="matiere_id" value={matiereId} />
+                    <input type="hidden" name="chapitre_id" value={chapitreId} />
+                    <input type="hidden" name="cours_id" value={coursId} />
                     <input type="hidden" name="video_id" value={video.id.toString()} />
                     <Button type="submit" size="sm" variant="outline">
                       Dépublier

@@ -56,6 +56,7 @@ export default async function CoursListePage({
                 {unCours.statut}
               </Badge>
               <form action={deplacerCoursAction}>
+                <input type="hidden" name="matiere_id" value={matiereId} />
                 <input type="hidden" name="chapitre_id" value={chapitreId} />
                 <input type="hidden" name="cours_id" value={unCours.id.toString()} />
                 <input type="hidden" name="direction" value="monter" />
@@ -64,6 +65,7 @@ export default async function CoursListePage({
                 </Button>
               </form>
               <form action={deplacerCoursAction}>
+                <input type="hidden" name="matiere_id" value={matiereId} />
                 <input type="hidden" name="chapitre_id" value={chapitreId} />
                 <input type="hidden" name="cours_id" value={unCours.id.toString()} />
                 <input type="hidden" name="direction" value="descendre" />
@@ -84,6 +86,8 @@ export default async function CoursListePage({
               </form>
               {unCours.statut === "brouillon" ? (
                 <form action={publierCoursAction}>
+                  <input type="hidden" name="matiere_id" value={matiereId} />
+                  <input type="hidden" name="chapitre_id" value={chapitreId} />
                   <input type="hidden" name="cours_id" value={unCours.id.toString()} />
                   <Button type="submit" size="sm">
                     Publier
@@ -91,6 +95,8 @@ export default async function CoursListePage({
                 </form>
               ) : (
                 <form action={depublierCoursAction}>
+                  <input type="hidden" name="matiere_id" value={matiereId} />
+                  <input type="hidden" name="chapitre_id" value={chapitreId} />
                   <input type="hidden" name="cours_id" value={unCours.id.toString()} />
                   <Button type="submit" size="sm" variant="outline">
                     Dépublier
