@@ -50,6 +50,11 @@ npm run test:e2e -- e2e/lot3-parcours-eleve.spec.ts
 Preuve actuelle : scénarios écrits et workflow prêt ; résultat en attente de
 l'exécution GitHub Actions après publication de la branche.
 
+Note d'implémentation : lire `response.body()` pendant une transition RSC a
+empêché le routeur Next.js de finaliser cette transition dans GitHub Actions.
+L'audit récupère donc séparément le HTML et le RSC avec la session authentifiée,
+puis observe une navigation Playwright normale sans lire les réponses en vol.
+
 ## 3. Stockage PDF privé
 
 - [!] Un PDF de test est réellement ouvert via un bucket privé provisionné.

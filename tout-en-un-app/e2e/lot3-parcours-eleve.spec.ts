@@ -182,50 +182,21 @@ async function ajouterRessourcesEnNombre(
   return { referencesVideo, clesStockage };
 }
 
-function auditerReponsesApplicatives(page: Page, secrets: string[]) {
-  const urls: string[] = [];
-  const corpsTextuels: Array<{ url: string; corps: string }> = [];
-  const lecturesEnCours: Promise<void>[] = [];
-  const origineApplication = new URL(page.url()).origin;
-
-  page.on("request", (requete) => urls.push(requete.url()));
-  page.on("response", (reponse) => {
-    if (!reponse.url().startsWith(origineApplication)) return;
-    const typeContenu = reponse.headers()["content-type"] ?? "";
-    if (!/(text\/html|text\/x-component|application\/json)/i.test(typeContenu)) return;
-    const lecture = reponse
-      .finished()
-      .then(async (erreur) => {
-        // Les préchargements RSC annulés par une navigation n'ont pas de corps
-        // lisible. Attendre leur fin évite de concurrencer la transition Next.js.
-        if (erreur) return;
-        const contenu = await reponse.body();
-        corpsTextuels.push({ url: reponse.url(), corps: contenu.toString("utf8") });
-      })
-      .catch(() => {
-        // Une navigation peut annuler une réponse précédente. Les autres corps
-        // restent inspectés et les URL sont toujours enregistrées.
-      });
-    lecturesEnCours.push(lecture);
-  });
-
-  return {
-    urls,
-    async verifier() {
-      await page.waitForLoadState("networkidle");
-      await Promise.all(lecturesEnCours);
-      const corpsCumule = corpsTextuels.map(({ corps }) => corps).join("\n");
-      for (const secret of secrets) {
-        expect(corpsCumule).not.toContain(secret);
-      }
-      expect(corpsCumule).not.toMatch(
-        /https?:\/\/(?:www\.)?(?:youtube\.com|youtu\.be|youtube-nocookie\.com)\//i,
-      );
-      expect(corpsCumule).not.toMatch(/https?:\/\/[^\s"']*supabase[^\s"']*\/storage\//i);
-      expect(urls.some((url) => /youtube|supabase.*storage/i.test(url))).toBe(false);
-      return { corpsTextuels };
-    },
-  };
+function verifierAbsenceLiensMedias(
+  corpsTextuels: Array<{ source: string; corps: string }>,
+  secrets: string[],
+) {
+  for (const { source, corps } of corpsTextuels) {
+    for (const secret of secrets) {
+      expect(corps, `${source} contient une référence média interne`).not.toContain(secret);
+    }
+    expect(corps, `${source} contient une URL vidéo permanente`).not.toMatch(
+      /https?:\/\/(?:www\.)?(?:youtube\.com|youtu\.be|youtube-nocookie\.com)\//i,
+    );
+    expect(corps, `${source} contient une URL Supabase Storage permanente`).not.toMatch(
+      /https?:\/\/[^\s"']*supabase[^\s"']*\/storage\//i,
+    );
+  }
 }
 
 test("un élève abonné parcourt une matière complète sur mobile sans fuite média", async ({
@@ -412,26 +383,54 @@ test("le HTML, les réponses RSC et le réseau initial ne révèlent aucun lien 
   const fixture = await seedParcoursComplet(Date.now());
   const ressources = await ajouterRessourcesEnNombre(fixture, 5);
   await connecter(page, fixture.email);
-  const audit = auditerReponsesApplicatives(page, [
+  const secrets = [
     fixture.referenceVideo,
     fixture.cleStockage,
     ...ressources.referencesVideo,
     ...ressources.clesStockage,
-  ]);
+  ];
 
-  const routeChapitre = `/matieres/${fixture.matiere.id}/chapitres/${fixture.chapitre.id}`;
-  const routeCours = `${routeChapitre}/cours/${fixture.cours.id}`;
+  const routeCours = `/matieres/${fixture.matiere.id}/chapitres/${fixture.chapitre.id}/cours/${fixture.cours.id}`;
+  const reponseHtml = await page.request.get(routeCours, {
+    headers: { Accept: "text/html" },
+  });
+  const reponseRsc = await page.request.get(routeCours, {
+    headers: { Accept: "text/x-component", RSC: "1" },
+  });
 
-  // Le parcours complet est couvert plus haut. Cet audit part d'un chapitre
-  // stable pour ne mesurer que la transition RSC vers le cours.
-  await page.goto(routeChapitre);
-  await expect(page.getByRole("heading", { name: fixture.chapitre.libelle })).toBeVisible();
-  await page.getByRole("link", { name: fixture.cours.titre }).click();
-  await expect(page).toHaveURL(routeCours);
+  expect(reponseHtml.status()).toBe(200);
+  expect(reponseHtml.headers()["content-type"]).toContain("text/html");
+  expect(reponseRsc.status()).toBe(200);
+  expect(reponseRsc.headers()["content-type"]).toContain("text/x-component");
+  verifierAbsenceLiensMedias(
+    [
+      { source: "HTML authentifié", corps: await reponseHtml.text() },
+      { source: "RSC authentifié", corps: await reponseRsc.text() },
+    ],
+    secrets,
+  );
+
+  const urlsInitiales: string[] = [];
+  page.on("request", (requete) => urlsInitiales.push(requete.url()));
+
+  // `response.body()` appelé pendant une transition RSC empêchait le routeur
+  // Next.js de la finaliser en CI. La navigation reste donc normale et son
+  // audit réseau n'observe que les URL, sans lire les réponses en vol.
+  await page.goto(routeCours);
   await expect(page.getByRole("heading", { name: fixture.cours.titre })).toBeVisible();
+  await page.waitForLoadState("networkidle");
 
-  const { corpsTextuels } = await audit.verifier();
-  expect(corpsTextuels.some(({ url }) => url.includes("/matieres"))).toBe(true);
-  expect(audit.urls.some((url) => url.includes("/videos/") && url.endsWith("/lecture"))).toBe(false);
+  verifierAbsenceLiensMedias(
+    [{ source: "DOM après navigation", corps: await page.content() }],
+    secrets,
+  );
+
+  expect(urlsInitiales.some((url) => url.includes(routeCours))).toBe(true);
+  expect(
+    urlsInitiales.some((url) =>
+      /\/api\/matieres\/[^/]+\/(?:videos|documents)\//i.test(new URL(url).pathname),
+    ),
+  ).toBe(false);
+  expect(urlsInitiales.some((url) => /youtube|supabase.*storage/i.test(url))).toBe(false);
   await expect(page.locator("iframe")).toHaveCount(0);
 });
