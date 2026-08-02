@@ -194,8 +194,12 @@ function auditerReponsesApplicatives(page: Page, secrets: string[]) {
     const typeContenu = reponse.headers()["content-type"] ?? "";
     if (!/(text\/html|text\/x-component|application\/json)/i.test(typeContenu)) return;
     const lecture = reponse
-      .body()
-      .then((contenu) => {
+      .finished()
+      .then(async (erreur) => {
+        // Les préchargements RSC annulés par une navigation n'ont pas de corps
+        // lisible. Attendre leur fin évite de concurrencer la transition Next.js.
+        if (erreur) return;
+        const contenu = await reponse.body();
         corpsTextuels.push({ url: reponse.url(), corps: contenu.toString("utf8") });
       })
       .catch(() => {
@@ -415,10 +419,15 @@ test("le HTML, les réponses RSC et le réseau initial ne révèlent aucun lien 
     ...ressources.clesStockage,
   ]);
 
-  await page.goto("/matieres");
-  await page.getByRole("link", { name: new RegExp(fixture.matiere.libelle) }).click();
-  await page.getByRole("link", { name: fixture.chapitre.libelle }).click();
+  const routeChapitre = `/matieres/${fixture.matiere.id}/chapitres/${fixture.chapitre.id}`;
+  const routeCours = `${routeChapitre}/cours/${fixture.cours.id}`;
+
+  // Le parcours complet est couvert plus haut. Cet audit part d'un chapitre
+  // stable pour ne mesurer que la transition RSC vers le cours.
+  await page.goto(routeChapitre);
+  await expect(page.getByRole("heading", { name: fixture.chapitre.libelle })).toBeVisible();
   await page.getByRole("link", { name: fixture.cours.titre }).click();
+  await expect(page).toHaveURL(routeCours);
   await expect(page.getByRole("heading", { name: fixture.cours.titre })).toBeVisible();
 
   const { corpsTextuels } = await audit.verifier();
