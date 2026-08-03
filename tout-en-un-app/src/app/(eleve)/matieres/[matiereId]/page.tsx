@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronRight } from "lucide-react";
 import { AccesRefuse } from "@/components/acces-refuse";
+import { COQUILLE_ELEVE } from "@/components/eleve/coquille";
 import { TableauDeBord } from "@/components/eleve/tableau-de-bord";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ELEVE_FR } from "@/lib/i18n/eleve.fr";
@@ -34,7 +35,7 @@ export default async function MatierePage({ params }: MatierePageProps) {
   if (!matiere) notFound();
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-3xl flex-col gap-8 px-4 py-8 sm:px-6">
+    <main className={`${COQUILLE_ELEVE} flex min-h-screen flex-col gap-8 py-8`}>
       <header className="space-y-3">
         <Link href="/matieres" className="inline-flex min-h-11 items-center text-sm font-medium hover:underline">
           {ELEVE_FR.navigation.retourMatieres}
@@ -52,7 +53,9 @@ export default async function MatierePage({ params }: MatierePageProps) {
         {matiere.chapitres.length === 0 ? (
           <p className="text-muted-foreground">{ELEVE_FR.chapitres.vide}</p>
         ) : (
-          <ul className="space-y-3">
+          // Grille plutôt qu'empilement : une matière compte une dizaine de
+          // chapitres, et sur grand écran la colonne unique ne remplissait rien.
+          <ul className="grid gap-3 lg:grid-cols-2 xl:grid-cols-3">
             {matiere.chapitres.map((chapitre) => (
               <li key={chapitre.id.toString()}>
                 <Link

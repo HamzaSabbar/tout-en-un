@@ -1,9 +1,10 @@
+import { COQUILLE_ELEVE } from "@/components/eleve/coquille";
 import { ELEVE_FR } from "@/lib/i18n/eleve.fr";
 
 export default function MatieresLoading() {
   return (
     <main
-      className="mx-auto flex min-h-screen w-full max-w-3xl flex-col gap-6 px-4 py-8 sm:px-6"
+      className={`${COQUILLE_ELEVE} flex min-h-screen flex-col gap-6 py-8`}
       aria-busy="true"
       aria-live="polite"
     >

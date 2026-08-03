@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { FileText, PenLine } from "lucide-react";
 import { AccesRefuse } from "@/components/acces-refuse";
+import { COQUILLE_ELEVE } from "@/components/eleve/coquille";
 import { VideoFacade } from "@/components/eleve/video-facade";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,7 +33,7 @@ export default async function CoursPage({ params }: CoursPageProps) {
   if (!cours) notFound();
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-3xl flex-col gap-8 px-4 py-8 sm:px-6">
+    <main className={`${COQUILLE_ELEVE} flex min-h-screen flex-col gap-8 py-8`}>
       <header className="space-y-3">
         <Link href={`/matieres/${matiereId}/chapitres/${chapitreId}`} className="inline-flex min-h-11 items-center text-sm font-medium hover:underline">
           {ELEVE_FR.navigation.retourChapitre}
@@ -49,7 +50,10 @@ export default async function CoursPage({ params }: CoursPageProps) {
         {cours.videos.length === 0 ? (
           <p className="text-muted-foreground">{ELEVE_FR.ressources.aucuneVideo}</p>
         ) : (
-          <ul className="space-y-5">
+          // Deux vidéos par ligne à partir de 1280 px : à 1152 px de coquille,
+          // chacune garde une largeur confortable, et une page de cours bien
+          // fournie cesse d'être un long défilement.
+          <ul className="grid gap-5 xl:grid-cols-2">
             {cours.videos.map((video) => (
               <li key={video.id.toString()}>
                 <Card>
@@ -69,64 +73,69 @@ export default async function CoursPage({ params }: CoursPageProps) {
         )}
       </section>
 
-      <section aria-labelledby="documents-titre" className="space-y-4">
-        <h2 id="documents-titre" className="text-xl font-semibold">{ELEVE_FR.ressources.documents}</h2>
-        {cours.documents.length === 0 ? (
-          <p className="text-muted-foreground">{ELEVE_FR.ressources.aucunDocument}</p>
-        ) : (
-          <ul className="space-y-3">
-            {cours.documents.map((document) => (
-              <li key={document.id.toString()} data-document-card={document.id.toString()}>
-                <Card>
-                  <CardContent className="flex flex-col gap-3 pt-6 sm:flex-row sm:items-center">
-                    <FileText aria-hidden="true" className="size-6 shrink-0 text-muted-foreground" />
-                    <p className="flex-1 font-medium">{document.titre}</p>
-                    <a
-                      href={`/api/matieres/${matiereId}/documents/${document.id}/lecture`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className={buttonVariants({ className: "min-h-11" })}
-                    >
-                      {ELEVE_FR.ressources.ouvrirPdf}
-                    </a>
-                  </CardContent>
-                </Card>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+      {/* Documents et exercices côte à côte à partir de 1024 px : ce sont deux
+          listes courtes, les empiler laissait la moitié de l'écran vide. Même
+          contenu, même ordre en une colonne sur téléphone. */}
+      <div className="grid gap-8 lg:grid-cols-2 lg:items-start">
+        <section aria-labelledby="documents-titre" className="space-y-4">
+          <h2 id="documents-titre" className="text-xl font-semibold">{ELEVE_FR.ressources.documents}</h2>
+          {cours.documents.length === 0 ? (
+            <p className="text-muted-foreground">{ELEVE_FR.ressources.aucunDocument}</p>
+          ) : (
+            <ul className="space-y-3">
+              {cours.documents.map((document) => (
+                <li key={document.id.toString()} data-document-card={document.id.toString()}>
+                  <Card>
+                    <CardContent className="flex flex-col gap-3 pt-6 sm:flex-row sm:items-center">
+                      <FileText aria-hidden="true" className="size-6 shrink-0 text-muted-foreground" />
+                      <p className="flex-1 font-medium">{document.titre}</p>
+                      <a
+                        href={`/api/matieres/${matiereId}/documents/${document.id}/lecture`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={buttonVariants({ className: "min-h-11" })}
+                      >
+                        {ELEVE_FR.ressources.ouvrirPdf}
+                      </a>
+                    </CardContent>
+                  </Card>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
 
-      <section aria-labelledby="exercices-titre" className="space-y-4">
-        <h2 id="exercices-titre" className="text-xl font-semibold">{ELEVE_FR.ressources.exercices}</h2>
-        {cours.exercices.length === 0 ? (
-          <p className="text-muted-foreground">{ELEVE_FR.ressources.aucunExercice}</p>
-        ) : (
-          <ul className="space-y-3">
-            {cours.exercices.map((exercice) => (
-              <li key={exercice.id} data-exercice-card={exercice.id}>
-                <Card>
-                  <CardContent className="flex flex-col gap-3 pt-6 sm:flex-row sm:items-center">
-                    <PenLine aria-hidden="true" className="size-6 shrink-0 text-muted-foreground" />
-                    <div className="flex-1">
-                      <p className="font-medium">{exercice.titre}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {ELEVE_FR.exercice.difficulte} {exercice.difficulte}/5
-                      </p>
-                    </div>
-                    <Link
-                      href={`/matieres/${matiereId}/chapitres/${chapitreId}/cours/${coursId}/exercices/${exercice.id}`}
-                      className={buttonVariants({ className: "min-h-11" })}
-                    >
-                      {ELEVE_FR.ressources.ouvrirExercice}
-                    </Link>
-                  </CardContent>
-                </Card>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+        <section aria-labelledby="exercices-titre" className="space-y-4">
+          <h2 id="exercices-titre" className="text-xl font-semibold">{ELEVE_FR.ressources.exercices}</h2>
+          {cours.exercices.length === 0 ? (
+            <p className="text-muted-foreground">{ELEVE_FR.ressources.aucunExercice}</p>
+          ) : (
+            <ul className="space-y-3">
+              {cours.exercices.map((exercice) => (
+                <li key={exercice.id} data-exercice-card={exercice.id}>
+                  <Card>
+                    <CardContent className="flex flex-col gap-3 pt-6 sm:flex-row sm:items-center">
+                      <PenLine aria-hidden="true" className="size-6 shrink-0 text-muted-foreground" />
+                      <div className="flex-1">
+                        <p className="font-medium">{exercice.titre}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {ELEVE_FR.exercice.difficulte} {exercice.difficulte}/5
+                        </p>
+                      </div>
+                      <Link
+                        href={`/matieres/${matiereId}/chapitres/${chapitreId}/cours/${coursId}/exercices/${exercice.id}`}
+                        className={buttonVariants({ className: "min-h-11" })}
+                      >
+                        {ELEVE_FR.ressources.ouvrirExercice}
+                      </Link>
+                    </CardContent>
+                  </Card>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      </div>
     </main>
   );
 }

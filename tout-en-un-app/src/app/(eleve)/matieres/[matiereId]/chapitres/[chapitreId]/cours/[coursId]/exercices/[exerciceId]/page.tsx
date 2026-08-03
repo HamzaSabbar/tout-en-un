@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AccesRefuse } from "@/components/acces-refuse";
 import { DocumentRicheVue } from "@/components/contenu-riche/document";
+import { COQUILLE_ELEVE } from "@/components/eleve/coquille";
 import { MarqueurEtape } from "@/components/eleve/marqueur-etape";
 import { VideoFacade } from "@/components/eleve/video-facade";
 import { Badge } from "@/components/ui/badge";
@@ -83,7 +84,7 @@ export default async function ExercicePage({ params }: ExercicePageProps) {
 
   return (
     <main
-      className="mx-auto flex min-h-screen w-full max-w-3xl flex-col gap-8 px-4 py-8 sm:px-6"
+      className={`${COQUILLE_ELEVE} flex min-h-screen flex-col gap-8 py-8`}
       data-exercice={exerciceId.toString()}
     >
       <MarqueurEtape signaler={marquerEnonceVuAction.bind(null, contexte)} />
@@ -104,114 +105,130 @@ export default async function ExercicePage({ params }: ExercicePageProps) {
         </div>
       </header>
 
-      <section aria-labelledby="enonce-titre" className="space-y-4">
-        <h2 id="enonce-titre" className="text-xl font-semibold">
-          {ELEVE_FR.exercice.enonce}
-        </h2>
-        {exercice.enonce ? (
-          <DocumentRicheVue document={exercice.enonce} baseUrlImages={baseUrlImages} />
-        ) : (
-          <p className="text-muted-foreground">{ELEVE_FR.exercice.contenuIllisible}</p>
-        )}
-      </section>
+      {/* Deux colonnes à partir de 1024 px : l'énoncé reste sous les yeux
+          pendant qu'on descend dans l'aide puis la correction. C'est l'écran qui
+          gagne le plus à la largeur, et c'est ce qui a motivé à traiter la mise
+          en page grand écran dans ce lot plutôt qu'à part.
 
-      <section aria-labelledby="aide-titre" className="space-y-4" data-etape="aide">
-        <h2 id="aide-titre" className="text-xl font-semibold">
-          {ELEVE_FR.exercice.aide}
-        </h2>
-        {!exercice.aideDisponible ? (
-          <p className="text-muted-foreground">{ELEVE_FR.exercice.aideIndisponible}</p>
-        ) : exercice.aide ? (
-          <DocumentRicheVue document={exercice.aide} baseUrlImages={baseUrlImages} />
-        ) : (
-          <form action={ouvrirAideAction}>
-            {champsContexte}
-            <Button type="submit" variant="outline" className="min-h-11">
-              {ELEVE_FR.exercice.demanderAide}
-            </Button>
-          </form>
-        )}
-      </section>
-
-      <section aria-labelledby="correction-titre" className="space-y-4" data-etape="correction">
-        <h2 id="correction-titre" className="text-xl font-semibold">
-          {ELEVE_FR.exercice.correction}
-        </h2>
-        {!exercice.correctionDisponible ? (
-          <p className="text-muted-foreground">{ELEVE_FR.exercice.correctionIndisponible}</p>
-        ) : exercice.correctionTexte ? (
-          <DocumentRicheVue document={exercice.correctionTexte} baseUrlImages={baseUrlImages} />
-        ) : (
-          <form action={voirCorrectionAction}>
-            {champsContexte}
-            <Button type="submit" className="min-h-11">
-              {ELEVE_FR.exercice.voirCorrection}
-            </Button>
-          </form>
-        )}
-      </section>
-
-      {/* Étape 4 : elle n'existe que si une correction vidéo existe, et elle
-          n'apparaît qu'après la correction écrite — sinon la vidéo donnerait la
-          réponse avant l'étape qui la porte. */}
-      {exercice.correctionVideoDisponible && etapes.correctionVue && (
+          Une seule colonne en dessous, dans le même ordre. Rien n'est ajouté
+          pour le grand écran : c'est le même contenu réparti autrement, donc le
+          téléphone ne télécharge rien de plus et rien n'est masqué en CSS. */}
+      <div className="grid gap-8 lg:grid-cols-2 lg:items-start lg:gap-10">
         <section
-          aria-labelledby="correction-video-titre"
-          className="space-y-4"
-          data-etape="correction-video"
+          aria-labelledby="enonce-titre"
+          className="space-y-4 lg:sticky lg:top-8 lg:max-h-[calc(100vh-4rem)] lg:overflow-y-auto"
+          data-etape="enonce"
         >
-          <h2 id="correction-video-titre" className="text-xl font-semibold">
-            {ELEVE_FR.exercice.correctionVideo}
+          <h2 id="enonce-titre" className="text-xl font-semibold">
+            {ELEVE_FR.exercice.enonce}
           </h2>
-          <VideoFacade
-            urlLecture={`/api/matieres/${matiereId}/exercices/${exerciceId}/correction-video`}
-            cle={`exercice-${exerciceId}`}
-            titre={`${ELEVE_FR.exercice.correctionVideo} — ${exercice.titre}`}
-            signalerOuverture={marquerCorrectionVideoVueAction.bind(null, contexte)}
-          />
+          {exercice.enonce ? (
+            <DocumentRicheVue document={exercice.enonce} baseUrlImages={baseUrlImages} />
+          ) : (
+            <p className="text-muted-foreground">{ELEVE_FR.exercice.contenuIllisible}</p>
+          )}
         </section>
-      )}
 
-      <section aria-labelledby="auto-evaluation-titre" data-etape="auto-evaluation">
-        <Card>
-          <CardHeader>
-            <CardTitle id="auto-evaluation-titre" className="text-base">
-              {ELEVE_FR.exercice.autoEvaluation}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <p className="text-sm text-muted-foreground">
-              {ELEVE_FR.exercice.autoEvaluationConsigne}
-            </p>
-            {etapes.autoEvaluation && (
-              <p role="status" className="text-sm font-medium">
-                {etapes.autoEvaluation === "reussi"
-                  ? ELEVE_FR.exercice.reponseReussi
-                  : ELEVE_FR.exercice.reponseARefaire}
-              </p>
-            )}
-            {/* Toujours proposé, même après une réponse : le journal est ajout
-                seul, changer d'avis écrit une ligne de plus et c'est la plus
-                récente qui vaut. */}
-            <div className="flex flex-wrap gap-3">
-              <form action={autoEvaluerAction}>
+        <div className="flex flex-col gap-8">
+          <section aria-labelledby="aide-titre" className="space-y-4" data-etape="aide">
+            <h2 id="aide-titre" className="text-xl font-semibold">
+              {ELEVE_FR.exercice.aide}
+            </h2>
+            {!exercice.aideDisponible ? (
+              <p className="text-muted-foreground">{ELEVE_FR.exercice.aideIndisponible}</p>
+            ) : exercice.aide ? (
+              <DocumentRicheVue document={exercice.aide} baseUrlImages={baseUrlImages} />
+            ) : (
+              <form action={ouvrirAideAction}>
                 {champsContexte}
-                <input type="hidden" name="resultat" value="reussi" />
-                <Button type="submit" className="min-h-11">
-                  {ELEVE_FR.exercice.reussi}
-                </Button>
-              </form>
-              <form action={autoEvaluerAction}>
-                {champsContexte}
-                <input type="hidden" name="resultat" value="a_refaire" />
                 <Button type="submit" variant="outline" className="min-h-11">
-                  {ELEVE_FR.exercice.aRefaire}
+                  {ELEVE_FR.exercice.demanderAide}
                 </Button>
               </form>
-            </div>
-          </CardContent>
-        </Card>
-      </section>
+            )}
+          </section>
+
+          <section aria-labelledby="correction-titre" className="space-y-4" data-etape="correction">
+            <h2 id="correction-titre" className="text-xl font-semibold">
+              {ELEVE_FR.exercice.correction}
+            </h2>
+            {!exercice.correctionDisponible ? (
+              <p className="text-muted-foreground">{ELEVE_FR.exercice.correctionIndisponible}</p>
+            ) : exercice.correctionTexte ? (
+              <DocumentRicheVue document={exercice.correctionTexte} baseUrlImages={baseUrlImages} />
+            ) : (
+              <form action={voirCorrectionAction}>
+                {champsContexte}
+                <Button type="submit" className="min-h-11">
+                  {ELEVE_FR.exercice.voirCorrection}
+                </Button>
+              </form>
+            )}
+          </section>
+
+          {/* Étape 4 : elle n'existe que si une correction vidéo existe, et elle
+              n'apparaît qu'après la correction écrite — sinon la vidéo donnerait la
+              réponse avant l'étape qui la porte. */}
+          {exercice.correctionVideoDisponible && etapes.correctionVue && (
+            <section
+              aria-labelledby="correction-video-titre"
+              className="space-y-4"
+              data-etape="correction-video"
+            >
+              <h2 id="correction-video-titre" className="text-xl font-semibold">
+                {ELEVE_FR.exercice.correctionVideo}
+              </h2>
+              <VideoFacade
+                urlLecture={`/api/matieres/${matiereId}/exercices/${exerciceId}/correction-video`}
+                cle={`exercice-${exerciceId}`}
+                titre={`${ELEVE_FR.exercice.correctionVideo} — ${exercice.titre}`}
+                signalerOuverture={marquerCorrectionVideoVueAction.bind(null, contexte)}
+              />
+            </section>
+          )}
+
+          <section aria-labelledby="auto-evaluation-titre" data-etape="auto-evaluation">
+            <Card>
+              <CardHeader>
+                <CardTitle id="auto-evaluation-titre" className="text-base">
+                  {ELEVE_FR.exercice.autoEvaluation}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  {ELEVE_FR.exercice.autoEvaluationConsigne}
+                </p>
+                {etapes.autoEvaluation && (
+                  <p role="status" className="text-sm font-medium">
+                    {etapes.autoEvaluation === "reussi"
+                      ? ELEVE_FR.exercice.reponseReussi
+                      : ELEVE_FR.exercice.reponseARefaire}
+                  </p>
+                )}
+                {/* Toujours proposé, même après une réponse : le journal est ajout
+                    seul, changer d'avis écrit une ligne de plus et c'est la plus
+                    récente qui vaut. */}
+                <div className="flex flex-wrap gap-3">
+                  <form action={autoEvaluerAction}>
+                    {champsContexte}
+                    <input type="hidden" name="resultat" value="reussi" />
+                    <Button type="submit" className="min-h-11">
+                      {ELEVE_FR.exercice.reussi}
+                    </Button>
+                  </form>
+                  <form action={autoEvaluerAction}>
+                    {champsContexte}
+                    <input type="hidden" name="resultat" value="a_refaire" />
+                    <Button type="submit" variant="outline" className="min-h-11">
+                      {ELEVE_FR.exercice.aRefaire}
+                    </Button>
+                  </form>
+                </div>
+              </CardContent>
+            </Card>
+          </section>
+        </div>
+      </div>
     </main>
   );
 }
