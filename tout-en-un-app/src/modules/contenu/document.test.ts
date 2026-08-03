@@ -32,8 +32,11 @@ vi.mock("@/lib/storage/storage", () => ({
 }));
 
 import {
+  depublierDocument,
   listerDocumentsCours,
   listerMediatheque,
+  listerRattachementsDocumentsDuFichier,
+  publierDocument,
   remplacerFichier,
   supprimerDocument,
   televerserDocument,
@@ -239,6 +242,72 @@ describe("listerDocumentsCours", () => {
       where: { cours_id: BigInt(3), supprime_le: null },
       include: { fichier: true },
     });
+  });
+});
+
+describe("publication d'un document", () => {
+  it("televerserDocument crée un brouillon, jamais un document publié", async () => {
+    televerser.mockResolvedValue(undefined);
+    createFichier.mockResolvedValue({ id: BigInt(7) });
+    createDocument.mockResolvedValue({ id: BigInt(9) });
+
+    await televerserDocument(
+      {
+        type: "cours_pdf",
+        titre: "Cours",
+        cours_id: "3",
+        nom: "cours.pdf",
+        type_mime: "application/pdf",
+        taille: 1024,
+      },
+      contenu,
+      BigInt(1),
+    );
+
+    // La publication est un geste distinct : rien ne doit atteindre l'élève du
+    // seul fait d'un téléversement.
+    expect(createDocument.mock.calls[0][0].data).not.toHaveProperty("statut");
+  });
+
+  it("publierDocument passe le statut à publie", async () => {
+    updateDocument.mockResolvedValue(undefined);
+    await publierDocument(BigInt(20));
+    expect(updateDocument).toHaveBeenCalledWith({
+      where: { id: BigInt(20) },
+      data: { statut: "publie" },
+    });
+  });
+
+  it("depublierDocument repasse le statut à brouillon", async () => {
+    updateDocument.mockResolvedValue(undefined);
+    await depublierDocument(BigInt(20));
+    expect(updateDocument).toHaveBeenCalledWith({
+      where: { id: BigInt(20) },
+      data: { statut: "brouillon" },
+    });
+  });
+
+  it("ne touche jamais publie_le, absent de la table document", async () => {
+    updateDocument.mockResolvedValue(undefined);
+    await publierDocument(BigInt(20));
+    expect(updateDocument.mock.calls[0][0].data).not.toHaveProperty("publie_le");
+  });
+});
+
+describe("listerRattachementsDocumentsDuFichier", () => {
+  it("remonte de quoi invalider le cache de chaque document du fichier", async () => {
+    findManyDocument.mockResolvedValue([]);
+    await listerRattachementsDocumentsDuFichier(BigInt(7));
+
+    const requete = findManyDocument.mock.calls[0][0];
+    expect(requete.where).toEqual({ fichier_id: BigInt(7), supprime_le: null });
+    expect(requete.select).toMatchObject({
+      matiere_id: true,
+      chapitre_id: true,
+      cours_id: true,
+    });
+    // La clé de stockage ne doit jamais sortir de ce service.
+    expect(requete.select).not.toHaveProperty("fichier");
   });
 });
 

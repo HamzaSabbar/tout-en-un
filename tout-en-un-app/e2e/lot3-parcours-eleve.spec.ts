@@ -182,6 +182,10 @@ async function ajouterRessourcesEnNombre(
   return { referencesVideo, clesStockage };
 }
 
+// Périmètre volontaire : le corps des réponses HTML, RSC et JSON, plus le trafic
+// de la navigation initiale. Pas l'en-tête Location d'une redirection signée, qui
+// contient la clé de stockage par construction, exactement comme une URL signée
+// Supabase. Élargir ces assertions aux en-têtes les ferait échouer par nature.
 function verifierAbsenceLiensMedias(
   corpsTextuels: Array<{ source: string; corps: string }>,
   secrets: string[],
@@ -262,9 +266,11 @@ test("la route PDF refuse sans accès et franchit la garde avec accès", async (
 
   await connecter(page, fixture.email);
   const avecAcces = await page.request.get(route, { maxRedirects: 0 });
-  // Sans bucket provisionné, la signature échoue en 503 ; l'essentiel ici est
-  // de prouver que l'abonné a franchi la garde et n'obtient donc pas 403.
-  expect(avecAcces.status()).not.toBe(403);
+  // L'abonné franchit la garde et reçoit une URL signée, même si cette fixture
+  // n'a jamais déposé d'octets derrière sa clé : signer un chemin sans objet doit
+  // rendre une redirection, pas une erreur. Le parcours complet jusqu'aux octets
+  // est prouvé par lot3-back-office-pdf.spec.ts.
+  expect(avecAcces.status()).toBe(307);
   expect(await avecAcces.text()).not.toContain(fixture.cleStockage);
 });
 

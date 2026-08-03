@@ -1,4 +1,5 @@
 import "./env";
+import { viderStockageLocal } from "@/lib/storage/local";
 import { exigerBaseDeTest, nettoyerDonneesE2E } from "./base-test";
 
 // Exécuté une fois avant la suite, avant même le démarrage du serveur web : si la
@@ -8,4 +9,7 @@ export default async function globalSetup() {
   // Repart d'une base sans résidu, au cas où une exécution précédente a été
   // interrompue avant son nettoyage.
   await nettoyerDonneesE2E();
+  // Le nettoyage de base ne touche pas au disque, et `supprimer()` n'est appelé
+  // nulle part : sans cette purge, chaque exécution laisserait ses octets.
+  await viderStockageLocal();
 }

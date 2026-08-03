@@ -153,6 +153,35 @@ export function listerDocumentsCours(coursId: bigint) {
   });
 }
 
+// Un document téléversé naît en brouillon, comme tout contenu. Sans ces deux
+// fonctions il n'existait aucun chemin pour le rendre visible à un élève, et la
+// page de cours élève filtre `statut = 'publie'` : un PDF téléversé restait
+// invisible pour toujours. `Document` n'a pas de colonne `publie_le`, donc rien
+// à horodater ici, contrairement à `publierCours`.
+export async function publierDocument(id: bigint): Promise<void> {
+  await prisma.document.update({ where: { id }, data: { statut: "publie" } });
+}
+
+export async function depublierDocument(id: bigint): Promise<void> {
+  await prisma.document.update({ where: { id }, data: { statut: "brouillon" } });
+}
+
 export async function supprimerDocument(id: bigint): Promise<void> {
   await prisma.document.update({ where: { id }, data: { supprime_le: new Date() } });
+}
+
+// Sert l'invalidation de cache après remplacement d'un fichier : les pages de
+// cours qui montrent ce fichier doivent être purgées, et un fichier peut être
+// référencé par plusieurs documents.
+export function listerRattachementsDocumentsDuFichier(fichierId: bigint) {
+  return prisma.document.findMany({
+    where: { fichier_id: fichierId, supprime_le: null },
+    select: {
+      matiere_id: true,
+      chapitre_id: true,
+      cours_id: true,
+      chapitre: { select: { matiere_id: true } },
+      cours: { select: { chapitre_id: true, chapitre: { select: { matiere_id: true } } } },
+    },
+  });
 }

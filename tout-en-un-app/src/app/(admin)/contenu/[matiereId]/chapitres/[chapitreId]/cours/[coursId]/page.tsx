@@ -3,7 +3,12 @@ import Link from "next/link";
 import { obtenirCours } from "@/modules/contenu/cours";
 import { listerVideos } from "@/modules/contenu/video";
 import { listerDocumentsCours } from "@/modules/contenu/document";
-import { depublierVideoAction, publierVideoAction } from "@/modules/contenu/actions";
+import {
+  depublierDocumentAction,
+  depublierVideoAction,
+  publierDocumentAction,
+  publierVideoAction,
+} from "@/modules/contenu/actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CreerVideoForm } from "./creer-video-form";
@@ -102,9 +107,32 @@ export default async function CoursDetailPage({
                   {document.type} · {document.fichier.nom}
                 </p>
               </div>
-              <Badge variant={document.statut === "publie" ? "default" : "secondary"}>
-                {document.statut}
-              </Badge>
+              <div className="flex items-center gap-2">
+                <Badge variant={document.statut === "publie" ? "default" : "secondary"}>
+                  {document.statut}
+                </Badge>
+                {document.statut === "brouillon" ? (
+                  <form action={publierDocumentAction}>
+                    <input type="hidden" name="matiere_id" value={matiereId} />
+                    <input type="hidden" name="chapitre_id" value={chapitreId} />
+                    <input type="hidden" name="cours_id" value={coursId} />
+                    <input type="hidden" name="document_id" value={document.id.toString()} />
+                    <Button type="submit" size="sm">
+                      Publier
+                    </Button>
+                  </form>
+                ) : (
+                  <form action={depublierDocumentAction}>
+                    <input type="hidden" name="matiere_id" value={matiereId} />
+                    <input type="hidden" name="chapitre_id" value={chapitreId} />
+                    <input type="hidden" name="cours_id" value={coursId} />
+                    <input type="hidden" name="document_id" value={document.id.toString()} />
+                    <Button type="submit" size="sm" variant="outline">
+                      Dépublier
+                    </Button>
+                  </form>
+                )}
+              </div>
             </li>
           ))}
           {documents.length === 0 && (

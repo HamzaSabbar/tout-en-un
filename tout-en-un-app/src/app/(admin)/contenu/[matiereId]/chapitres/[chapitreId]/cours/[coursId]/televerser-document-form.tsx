@@ -38,14 +38,19 @@ export function TeleverserDocumentForm({
         <input type="hidden" name="chapitre_id" value={chapitreId} />
         <input type="hidden" name="cours_id" value={coursId} />
         <CardContent className="flex flex-col gap-4">
+          {/* Identifiants préfixés : le formulaire de création de vidéo, sur la
+              même page, porte aussi un champ « Titre ». Deux éléments d'un même
+              identifiant rendent l'association label-champ ambiguë, pour un
+              lecteur d'écran comme pour un test. Les attributs `name` ne changent
+              pas : c'est eux que lit le serveur. */}
           <div className="flex flex-col gap-2">
-            <Label htmlFor="titre">Titre</Label>
-            <Input id="titre" name="titre" required maxLength={150} />
+            <Label htmlFor="document-titre">Titre</Label>
+            <Input id="document-titre" name="titre" required maxLength={150} />
           </div>
           <div className="flex flex-col gap-2">
-            <Label htmlFor="type">Type</Label>
+            <Label htmlFor="document-type">Type</Label>
             <select
-              id="type"
+              id="document-type"
               name="type"
               required
               className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm"
@@ -58,8 +63,14 @@ export function TeleverserDocumentForm({
             </select>
           </div>
           <div className="flex flex-col gap-2">
-            <Label htmlFor="fichier">Fichier PDF</Label>
-            <Input id="fichier" name="fichier" type="file" accept="application/pdf" required />
+            <Label htmlFor="document-fichier">Fichier PDF</Label>
+            <Input
+              id="document-fichier"
+              name="fichier"
+              type="file"
+              accept="application/pdf"
+              required
+            />
           </div>
           {state.erreur && <p className="text-sm text-destructive">{state.erreur}</p>}
         </CardContent>

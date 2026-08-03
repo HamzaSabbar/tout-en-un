@@ -91,8 +91,11 @@ test("le professeur saisit une matière complète de bout en bout en brouillon, 
   // Publication en un clic depuis la liste des matières : le statut change,
   // le chapitre et le cours déjà créés restent accessibles.
   await page.goto("/contenu/matieres");
-  await ligneMatiere.getByRole("button", { name: "Publier" }).click();
-  await expect(ligneMatiere.getByText("publie")).toBeVisible();
+  await ligneMatiere.getByRole("button", { name: "Publier", exact: true }).click();
+  // `exact` obligatoire : une fois la matière publiée, la ligne porte aussi le
+  // bouton « Dépublier », dont le libellé contient « publie ». Sans cela
+  // l'assertion gagne ou perd une course selon l'ordre de rendu.
+  await expect(ligneMatiere.getByText("publie", { exact: true })).toBeVisible();
 
   await ligneMatiere.getByRole("link", { name: libelleMatiere }).click();
   await expect(page.getByText(libelleChapitre)).toBeVisible();

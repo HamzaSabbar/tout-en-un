@@ -219,6 +219,27 @@ export async function depublierVideoAction(formData: FormData): Promise<void> {
 
 // --- Documents et médiathèque ---
 
+// Un document peut être rattaché à une matière, à un chapitre ou à un cours :
+// n'invalide que le niveau réellement fourni, sans supposer les trois.
+function invaliderRattachement(rattachement: {
+  matiereId?: bigint | null;
+  chapitreId?: bigint | null;
+  coursId?: bigint | null;
+}): void {
+  const { matiereId, chapitreId, coursId } = rattachement;
+  if (matiereId && chapitreId && coursId) {
+    invaliderCours(matiereId, chapitreId, coursId);
+  } else if (matiereId && chapitreId) {
+    invaliderChapitre(matiereId, chapitreId);
+  } else if (matiereId) {
+    invaliderMatiere(matiereId);
+  }
+}
+
+function identifiantOptionnel(valeur: FormDataEntryValue | null): bigint | undefined {
+  return valeur ? BigInt(valeur as string) : undefined;
+}
+
 export async function televerserDocumentAction(
   _prevState: ActionState,
   formData: FormData,
@@ -247,7 +268,33 @@ export async function televerserDocumentAction(
   if (!resultat.succes) {
     return { erreur: resultat.erreur };
   }
+
+  // Seulement en cas de succès : rien n'a changé côté élève si le stockage a
+  // refusé le fichier.
+  invaliderRattachement({
+    matiereId: identifiantOptionnel(formData.get("matiere_id")),
+    chapitreId: identifiantOptionnel(formData.get("chapitre_id")),
+    coursId: identifiantOptionnel(formData.get("cours_id")),
+  });
   return {};
+}
+
+export async function publierDocumentAction(formData: FormData): Promise<void> {
+  await requirePermission("contenu:gerer");
+  const matiereId = BigInt(formData.get("matiere_id") as string);
+  const chapitreId = BigInt(formData.get("chapitre_id") as string);
+  const coursId = BigInt(formData.get("cours_id") as string);
+  await documentService.publierDocument(BigInt(formData.get("document_id") as string));
+  invaliderCours(matiereId, chapitreId, coursId);
+}
+
+export async function depublierDocumentAction(formData: FormData): Promise<void> {
+  await requirePermission("contenu:gerer");
+  const matiereId = BigInt(formData.get("matiere_id") as string);
+  const chapitreId = BigInt(formData.get("chapitre_id") as string);
+  const coursId = BigInt(formData.get("cours_id") as string);
+  await documentService.depublierDocument(BigInt(formData.get("document_id") as string));
+  invaliderCours(matiereId, chapitreId, coursId);
 }
 
 export async function remplacerFichierAction(
@@ -260,14 +307,31 @@ export async function remplacerFichierAction(
     return { erreur: "Choisis un fichier PDF de remplacement." };
   }
 
+  const fichierId = BigInt(formData.get("fichier_id") as string);
   const resultat = await documentService.remplacerFichier(
-    BigInt(formData.get("fichier_id") as string),
+    fichierId,
     await fichierEnBuffer(fichier),
     { nom: fichier.name, type_mime: fichier.type, taille: fichier.size },
   );
 
   if (!resultat.succes) {
     return { erreur: resultat.erreur };
+  }
+
+  // Le remplacement réutilise la même clé de stockage, donc aucune référence ne
+  // bouge, mais le contenu servi change : les pages qui exposent ce fichier
+  // doivent être purgées. Un fichier peut porter plusieurs documents.
+  const rattachements =
+    await documentService.listerRattachementsDocumentsDuFichier(fichierId);
+  for (const document of rattachements) {
+    invaliderRattachement({
+      matiereId:
+        document.matiere_id ??
+        document.chapitre?.matiere_id ??
+        document.cours?.chapitre.matiere_id,
+      chapitreId: document.chapitre_id ?? document.cours?.chapitre_id,
+      coursId: document.cours_id,
+    });
   }
   return {};
 }
