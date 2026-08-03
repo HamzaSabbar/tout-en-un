@@ -422,6 +422,39 @@ la consommation mobile et au suivi fin de progression.
   rediffusion.
 - Convention de nommage des clés de stockage :
   `matiere/chapitre/cours/type-identifiant.pdf`.
+- Un document téléversé naît en brouillon. La publication est un geste distinct,
+  au même titre que pour un chapitre, un cours ou une vidéo : la page de cours
+  élève filtre `statut = 'publie'` dans sa requête.
+
+#### Stockage de secours sur disque, développement et tests
+
+Sans bucket provisionné, le stockage bascule sur un répertoire local
+`.stockage-local/`. Sans lui, aucun téléversement ne pourrait aboutir hors
+production, donc aucune recette ne pourrait prouver le parcours PDF de bout en
+bout. En production sans configuration de stockage, l'appel échoue clairement
+plutôt que d'écrire sur un disque éphémère.
+
+`next start` fixe `NODE_ENV=production`, y compris pour la recette de bout en
+bout : ouvrir le stockage local dans ce mode demande la dérogation explicite
+`STOCKAGE_LOCAL_AUTORISE=oui`, posée par `playwright.config.ts` pour sa propre
+exécution et absente de tout environnement réel.
+
+L'adaptateur sert ses fichiers par `/api/stockage-local/[...cle]`, qui renvoie 404
+dès que le stockage local n'est pas autorisé. Cette route **n'appelle pas**
+`verifierAccesMatiere()`, et ce n'est pas une entorse à l'invariant 7 : elle
+vérifie son autorisation elle-même, sous forme de **capacité**. La signature
+HMAC-SHA256 porte sur la clé et une expiration à 600 secondes, elle n'est
+forgeable que par le serveur, et elle n'est émise que par
+`/api/matieres/[matiereId]/documents/[documentId]/lecture`, en aval d'un appel
+autorisé à l'implémentation unique de la règle d'accès. Redériver l'accès depuis
+l'identité exigerait un second chemin clé vers matière, soit la duplication que
+l'invariant 1 interdit. C'est le modèle des URL signées Supabase, où le second
+saut sort simplement de notre surface d'API.
+
+Conséquence à connaître : une URL signée contient la clé de stockage par
+construction, ici comme chez Supabase. Elle n'apparaît que dans l'en-tête
+`Location` d'une redirection au corps vide, jamais dans un HTML, un RSC ou un
+corps JSON. L'invariant 3 porte sur ces corps, pas sur l'en-tête de redirection.
 
 ### Images et pièces jointes
 

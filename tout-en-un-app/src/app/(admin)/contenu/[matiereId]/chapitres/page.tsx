@@ -74,6 +74,7 @@ export default async function ChapitresPage({
               </form>
               {chapitre.statut === "brouillon" ? (
                 <form action={publierChapitreAction}>
+                  <input type="hidden" name="matiere_id" value={matiere.id.toString()} />
                   <input type="hidden" name="chapitre_id" value={chapitre.id.toString()} />
                   <Button type="submit" size="sm">
                     Publier
@@ -81,6 +82,7 @@ export default async function ChapitresPage({
                 </form>
               ) : (
                 <form action={depublierChapitreAction}>
+                  <input type="hidden" name="matiere_id" value={matiere.id.toString()} />
                   <input type="hidden" name="chapitre_id" value={chapitre.id.toString()} />
                   <Button type="submit" size="sm" variant="outline">
                     Dépublier

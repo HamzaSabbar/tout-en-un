@@ -10,7 +10,12 @@ export default defineConfig({
   // tourner en parallèle rendrait les assertions dépendantes de l'ordonnancement.
   fullyParallel: false,
   workers: 1,
-  reporter: "list",
+  reporter: process.env.CI
+    ? [
+        ["list"],
+        ["html", { outputFolder: "playwright-report", open: "never" }],
+      ]
+    : "list",
   timeout: 60_000,
   expect: {
     timeout: 15_000,
@@ -18,12 +23,25 @@ export default defineConfig({
   globalSetup: "./e2e/support/global-setup.ts",
   use: {
     baseURL: "http://localhost:3000",
+    screenshot: "only-on-failure",
+    trace: "retain-on-failure",
   },
   webServer: {
     command: process.env.CI ? "pnpm build && pnpm start" : "pnpm dev",
     url: "http://localhost:3000",
     reuseExistingServer: !process.env.CI,
-    timeout: 180_000,
+    // Installation puis build de production complet avant le premier scénario :
+    // 180 s ne laissaient aucune marge et tuaient le worker de build en cours de
+    // collecte des pages.
+    timeout: 600_000,
+    env: {
+      // `next start` fixe NODE_ENV=production, y compris ici. Sans cette
+      // dérogation explicite, le stockage de secours sur disque resterait fermé
+      // et aucun téléversement ne pourrait aboutir faute de bucket Supabase.
+      // Posée ici plutôt que dans le workflow : la CI reste sans configuration de
+      // stockage, et l'exception vit avec la recette qui en a besoin.
+      STOCKAGE_LOCAL_AUTORISE: "oui",
+    },
     stdout: "pipe",
     stderr: "pipe",
   },

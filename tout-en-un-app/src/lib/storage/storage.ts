@@ -1,56 +1,43 @@
-import { createClient } from "@supabase/supabase-js";
 import { env } from "@/lib/env";
+import type { StorageService } from "@/lib/storage/contrat";
+import { adaptateurLocal, stockageLocalAutorise } from "@/lib/storage/local";
+import {
+  MESSAGE_CONFIGURATION_MANQUANTE,
+  adaptateurSupabase,
+} from "@/lib/storage/supabase";
 
-export interface StorageService {
-  televerser(params: { cle: string; contenu: Buffer; typeMime: string }): Promise<void>;
-  genererUrlSignee(cle: string, dureeSecondes: number): Promise<string>;
-  supprimer(cle: string): Promise<void>;
-}
+export type { StorageService };
 
-function obtenirConfiguration() {
+// Supabase dès que le bucket est configuré. Sinon un stockage disque, réservé au
+// développement et aux tests, qui rend le parcours de téléversement et de lecture
+// réellement exécutable sans provisionnement. Sinon l'échec explicite d'avant :
+// une production sans stockage configuré doit se plaindre, pas écrire sur un
+// disque éphémère.
+function choisirAdaptateur(): StorageService {
   const { SUPABASE_STORAGE_URL, SUPABASE_STORAGE_KEY, SUPABASE_STORAGE_BUCKET } = env;
-  if (!SUPABASE_STORAGE_URL || !SUPABASE_STORAGE_KEY || !SUPABASE_STORAGE_BUCKET) {
-    throw new Error(
-      "Stockage de fichiers non configuré : SUPABASE_STORAGE_URL, " +
-        "SUPABASE_STORAGE_KEY et SUPABASE_STORAGE_BUCKET sont requis (voir .env.example).",
-    );
+  if (SUPABASE_STORAGE_URL && SUPABASE_STORAGE_KEY && SUPABASE_STORAGE_BUCKET) {
+    return adaptateurSupabase;
   }
-  return { SUPABASE_STORAGE_URL, SUPABASE_STORAGE_KEY, SUPABASE_STORAGE_BUCKET };
+  if (stockageLocalAutorise()) {
+    return adaptateurLocal;
+  }
+  throw new Error(MESSAGE_CONFIGURATION_MANQUANTE);
 }
 
-function bucket() {
-  const { SUPABASE_STORAGE_URL, SUPABASE_STORAGE_KEY, SUPABASE_STORAGE_BUCKET } =
-    obtenirConfiguration();
-  return createClient(SUPABASE_STORAGE_URL, SUPABASE_STORAGE_KEY).storage.from(
-    SUPABASE_STORAGE_BUCKET,
-  );
-}
-
+// Le choix se fait à chaque appel, jamais au chargement du module : importer ce
+// fichier reste sans effet de bord et sans lecture d'environnement. Les méthodes
+// restent `async` pour que le refus de `choisirAdaptateur()` arrive à l'appelant
+// en promesse rejetée, et non en exception synchrone.
 export const storageService: StorageService = {
-  async televerser({ cle, contenu, typeMime }) {
-    const { error } = await bucket().upload(cle, contenu, {
-      contentType: typeMime,
-      upsert: true,
-    });
-    if (error) {
-      throw new Error(`Échec du téléversement (${cle}) : ${error.message}`);
-    }
+  async televerser(params) {
+    return choisirAdaptateur().televerser(params);
   },
 
   async genererUrlSignee(cle, dureeSecondes) {
-    const { data, error } = await bucket().createSignedUrl(cle, dureeSecondes);
-    if (error || !data) {
-      throw new Error(
-        `Échec de la génération de l'URL signée (${cle}) : ${error?.message}`,
-      );
-    }
-    return data.signedUrl;
+    return choisirAdaptateur().genererUrlSignee(cle, dureeSecondes);
   },
 
   async supprimer(cle) {
-    const { error } = await bucket().remove([cle]);
-    if (error) {
-      throw new Error(`Échec de la suppression (${cle}) : ${error.message}`);
-    }
+    return choisirAdaptateur().supprimer(cle);
   },
 };

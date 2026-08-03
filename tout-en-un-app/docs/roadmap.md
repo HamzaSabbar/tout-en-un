@@ -153,16 +153,37 @@ Architecture : sections 5.1, 6, 13.
 10 j, critique. Ouvrir l'espace élève en rendu serveur, mobile-first sur réseau
 4G irrégulier.
 
-- [ ] Choix de la matière, puis tableau de bord à quatre cartes : progression,
+- [x] Choix de la matière, puis tableau de bord à quatre cartes : progression,
       prochain live, dernière note, compte à rebours du national
-- [ ] Navigation chapitres puis cours puis ressources, en une requête agrégée par
+- [x] Navigation chapitres puis cours puis ressources, en une requête agrégée par
       page
-- [ ] Lecteur vidéo en chargement différé, avec restriction de domaine
-- [ ] Lecture des PDF par URL signée de 10 minutes, téléchargement traité comme
+- [x] Lecteur vidéo en chargement différé, avec restriction de domaine
+- [x] Lecture des PDF par URL signée de 10 minutes, téléchargement traité comme
       un droit distinct
-- [ ] Mise en cache des pages de structure, invalidation ciblée à la publication
+- [x] Publication d'un document, distincte du téléversement, et invalidation du
+      cache au téléversement, au remplacement et à la publication
+- [x] Mise en cache des pages de structure, invalidation ciblée à la publication
 - [ ] Index `(cours_id, statut, ordre)` sur `video`, `exercice`,
       `extrait_national`
+
+**Les quatre cartes du tableau de bord sont des emplacements réservés.** Elles
+sont livrées, disposées et accessibles, mais toutes rendent « Pas encore
+disponible » : leurs sources appartiennent aux lots 5 (compte à rebours du
+national), 6 (dernière note), 7 (progression) et 8 (prochain live). Chaque carte a
+déjà sa fonction dédiée dans `parcours-eleve/tableau-de-bord.ts` ; le lot
+propriétaire n'aura qu'à en remplir le corps, sans toucher au rendu.
+
+Le parcours PDF est prouvé de bout en bout par le back-office réel, téléversement
+puis publication puis lecture par l'élève jusqu'aux octets du fichier
+(`e2e/lot3-back-office-pdf.spec.ts`). Hors production et sans bucket provisionné,
+le stockage bascule sur un répertoire local `.stockage-local/` et sert ses
+fichiers par URL signée de 600 secondes : voir architecture section 8. Le bucket
+privé Supabase de production reste à provisionner, ce qui est une tâche
+d'exploitation et non une inconnue de conception.
+
+L'index de `video` existe déjà. Les modèles `exercice` et `extrait_national`
+n'existent pas encore ; leurs index restent à créer dans leurs lots propriétaires
+sans introduire prématurément de nouvelles tables au lot 3.
 
 **Critère de sortie.** Un élève abonné parcourt une matière complète sur mobile,
 regarde une vidéo et ouvre un PDF. Aucune URL de fichier ou de vidéo n'apparaît

@@ -16,8 +16,15 @@
 /playwright-report/
 /playwright/.cache/
 
+# stockage de secours sur disque, développement et tests uniquement
+/.stockage-local/
+
+# artefacts de la CLI Supabase
+/supabase/.temp/
+
 # next.js
 /.next/
+/.next-budget/
 /out/
 
 # production

@@ -46,6 +46,17 @@ describe("creerVideo", () => {
     });
     expect(resultat).toEqual({ succes: true, id: "1" });
   });
+
+  it("refuse une URL complète à la place d'une référence neutre", async () => {
+    const resultat = await creerVideo({
+      cours_id: "1",
+      titre: "Introduction",
+      fournisseur: "youtube",
+      video_ref: "https://youtube.com/watch?v=abc123",
+    });
+    expect(resultat.succes).toBe(false);
+    expect(create).not.toHaveBeenCalled();
+  });
 });
 
 describe("modifierVideo", () => {

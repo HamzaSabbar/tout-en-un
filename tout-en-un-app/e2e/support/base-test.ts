@@ -162,15 +162,20 @@ export async function nettoyerDonneesE2E(): Promise<void> {
 }
 
 // Compte ce qui reste : sert au test qui vérifie que le nettoyage ne laisse rien.
+// `fichier` et `document` en font partie depuis qu'un scénario téléverse par le
+// back-office : sans eux, une ligne de fichier oubliée passait inaperçue.
 export async function compterResiduE2E(): Promise<number> {
   const commencePar = { startsWith: PREFIXE_E2E };
-  const [utilisateurs, filieres, matieres, offres] = await Promise.all([
-    prisma.utilisateur.count({
-      where: { email: { startsWith: PREFIXE_E2E.toLowerCase() } },
-    }),
-    prisma.filiere.count({ where: { code: commencePar } }),
-    prisma.matiere.count({ where: { code: commencePar } }),
-    prisma.offre.count({ where: { libelle: commencePar } }),
-  ]);
-  return utilisateurs + filieres + matieres + offres;
+  const [utilisateurs, filieres, matieres, offres, fichiers, documents] =
+    await Promise.all([
+      prisma.utilisateur.count({
+        where: { email: { startsWith: PREFIXE_E2E.toLowerCase() } },
+      }),
+      prisma.filiere.count({ where: { code: commencePar } }),
+      prisma.matiere.count({ where: { code: commencePar } }),
+      prisma.offre.count({ where: { libelle: commencePar } }),
+      prisma.fichier.count({ where: { nom: commencePar } }),
+      prisma.document.count({ where: { titre: commencePar } }),
+    ]);
+  return utilisateurs + filieres + matieres + offres + fichiers + documents;
 }
