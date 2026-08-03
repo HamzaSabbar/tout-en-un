@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { televerserDocumentAction, type ActionState } from "@/modules/contenu/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,12 +9,20 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 
 const initialState: ActionState = {};
 
+// `accept` suit le type choisi : le serveur refuse de toute façon un PDF déclaré
+// comme image et l'inverse, mais autant ne pas laisser le professeur découvrir la
+// règle après le téléversement.
 const TYPES_DOCUMENT = [
-  { valeur: "cours_pdf", libelle: "Cours (PDF)" },
-  { valeur: "resume_pdf", libelle: "Résumé (PDF)" },
-  { valeur: "correction_pdf", libelle: "Correction (PDF)" },
-  { valeur: "sujet_pdf", libelle: "Sujet (PDF)" },
-  { valeur: "support_live", libelle: "Support de live" },
+  { valeur: "cours_pdf", libelle: "Cours (PDF)", accept: "application/pdf" },
+  { valeur: "resume_pdf", libelle: "Résumé (PDF)", accept: "application/pdf" },
+  { valeur: "correction_pdf", libelle: "Correction (PDF)", accept: "application/pdf" },
+  { valeur: "sujet_pdf", libelle: "Sujet (PDF)", accept: "application/pdf" },
+  { valeur: "support_live", libelle: "Support de live", accept: "application/pdf" },
+  {
+    valeur: "image_exercice",
+    libelle: "Image d'exercice",
+    accept: "image/png,image/jpeg,image/webp",
+  },
 ];
 
 export function TeleverserDocumentForm({
@@ -27,6 +35,7 @@ export function TeleverserDocumentForm({
   coursId: string;
 }) {
   const [state, formAction, pending] = useActionState(televerserDocumentAction, initialState);
+  const [type, setType] = useState(TYPES_DOCUMENT[0]);
 
   return (
     <Card>
@@ -53,6 +62,13 @@ export function TeleverserDocumentForm({
               id="document-type"
               name="type"
               required
+              value={type.valeur}
+              onChange={(evenement) =>
+                setType(
+                  TYPES_DOCUMENT.find((candidat) => candidat.valeur === evenement.target.value) ??
+                    TYPES_DOCUMENT[0],
+                )
+              }
               className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm"
             >
               {TYPES_DOCUMENT.map((type) => (
@@ -63,14 +79,22 @@ export function TeleverserDocumentForm({
             </select>
           </div>
           <div className="flex flex-col gap-2">
-            <Label htmlFor="document-fichier">Fichier PDF</Label>
+            <Label htmlFor="document-fichier">
+              {type.valeur === "image_exercice" ? "Image" : "Fichier PDF"}
+            </Label>
             <Input
               id="document-fichier"
               name="fichier"
               type="file"
-              accept="application/pdf"
+              accept={type.accept}
               required
             />
+            {type.valeur === "image_exercice" && (
+              <p className="text-xs text-muted-foreground">
+                PNG, JPEG ou WebP, 5 Mo au maximum. Une fois téléversée, reprends
+                l&apos;identifiant du fichier dans un nœud <code>image</code> du contenu riche.
+              </p>
+            )}
           </div>
           {state.erreur && <p className="text-sm text-destructive">{state.erreur}</p>}
         </CardContent>

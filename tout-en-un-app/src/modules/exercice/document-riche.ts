@@ -130,10 +130,17 @@ const formuleSchema = z
   })
   .strict();
 
+// L'identifiant de fichier est stocké en **chaîne de chiffres**, pas en `bigint`
+// ni en nombre. En `bigint`, `JSON.stringify` lève et le document deviendrait
+// impossible à écrire dans une colonne `Json`. En nombre, un identifiant
+// au-delà de 2^53 perdrait de la précision alors que la colonne est un BIGINT.
+// La chaîne est la seule des trois formes qui traverse JSON sans rien perdre.
+const identifiantFichierSchema = z.string().regex(/^[1-9][0-9]{0,18}$/);
+
 const imageSchema = z
   .object({
     type: z.literal("image"),
-    fichier_id: z.coerce.bigint(),
+    fichier_id: identifiantFichierSchema,
     // Obligatoire, et non optionnel : une image d'exercice sans alternative
     // textuelle est inaccessible, et rien ne pousse à en écrire une si le modèle
     // l'autorise à manquer.
@@ -179,17 +186,18 @@ export function analyserDocumentRiche(valeur: unknown): DocumentRiche | null {
   return analyse.success ? analyse.data : null;
 }
 
-// Les identifiants de fichier cités par un document, pour que l'appelant résolve
-// les URL signées en une seule requête plutôt qu'une par image.
+// Les identifiants de fichier cités par un document. Rendus en `bigint`, forme
+// attendue par Prisma : la conversion est sûre, le schéma a déjà vérifié que ce
+// sont des chiffres. Sert à autoriser la lecture d'une image, et à la résoudre
+// en une requête plutôt qu'une par image.
 export function fichiersReferences(document: DocumentRiche): bigint[] {
   const vus = new Set<string>();
   const identifiants: bigint[] = [];
   for (const noeud of document.noeuds) {
     if (noeud.type !== "image") continue;
-    const cle = noeud.fichier_id.toString();
-    if (vus.has(cle)) continue;
-    vus.add(cle);
-    identifiants.push(noeud.fichier_id);
+    if (vus.has(noeud.fichier_id)) continue;
+    vus.add(noeud.fichier_id);
+    identifiants.push(BigInt(noeud.fichier_id));
   }
   return identifiants;
 }
@@ -207,9 +215,13 @@ export function analyserDocumentRicheJson(brut: string): DocumentRiche | null {
   return analyserDocumentRiche(valeur);
 }
 
-// Schéma de champ pour les formulaires : le back-office envoie du texte, le
-// service veut un document validé. Un champ vide vaut « absent », ce qui sert
-// l'aide et la correction, toutes deux facultatives.
+// Schémas de champ pour les formulaires : le back-office envoie du texte, le
+// service veut un document validé.
+//
+// Deux variantes, parce que les trois champs d'un exercice n'ont pas le même
+// statut : l'énoncé est obligatoire, l'aide et la correction écrite sont
+// facultatives. Pour ces dernières, un champ vide vaut « absent » et non
+// « invalide ».
 export const champDocumentRicheSchema = z
   .string()
   .trim()
@@ -218,6 +230,18 @@ export const champDocumentRicheSchema = z
     const document = analyserDocumentRicheJson(brut);
     if (!document) {
       ctx.addIssue({ code: "custom", message: "Contenu riche invalide." });
+      return z.NEVER;
+    }
+    return document;
+  });
+
+export const champDocumentRicheObligatoireSchema = z
+  .string()
+  .trim()
+  .transform((brut, ctx) => {
+    const document = brut === "" ? null : analyserDocumentRicheJson(brut);
+    if (!document) {
+      ctx.addIssue({ code: "custom", message: "Contenu riche invalide ou vide." });
       return z.NEVER;
     }
     return document;

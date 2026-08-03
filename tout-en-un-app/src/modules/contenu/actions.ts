@@ -7,6 +7,7 @@ import * as chapitreService from "@/modules/contenu/chapitre";
 import * as coursService from "@/modules/contenu/cours";
 import * as videoService from "@/modules/contenu/video";
 import * as documentService from "@/modules/contenu/document";
+import * as exerciceService from "@/modules/exercice/service";
 import {
   invaliderChapitre,
   invaliderCours,
@@ -294,6 +295,46 @@ export async function depublierDocumentAction(formData: FormData): Promise<void>
   const chapitreId = BigInt(formData.get("chapitre_id") as string);
   const coursId = BigInt(formData.get("cours_id") as string);
   await documentService.depublierDocument(BigInt(formData.get("document_id") as string));
+  invaliderCours(matiereId, chapitreId, coursId);
+}
+
+// --- Exercices ---
+
+export async function creerExerciceAction(
+  _prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  await requirePermission("contenu:gerer");
+  const resultat = await exerciceService.creerExercice(champsFormulaire(formData));
+  if (!resultat.succes) {
+    return { erreur: resultat.erreur };
+  }
+  // Un exercice naît en brouillon, donc rien ne change encore pour l'élève. Le
+  // cours est invalidé quand même : la page de cours du back-office et celle de
+  // l'élève partagent les mêmes étiquettes de cache.
+  invaliderCours(
+    BigInt(formData.get("matiere_id") as string),
+    BigInt(formData.get("chapitre_id") as string),
+    BigInt(formData.get("cours_id") as string),
+  );
+  return {};
+}
+
+export async function publierExerciceAction(formData: FormData): Promise<void> {
+  await requirePermission("contenu:gerer");
+  const matiereId = BigInt(formData.get("matiere_id") as string);
+  const chapitreId = BigInt(formData.get("chapitre_id") as string);
+  const coursId = BigInt(formData.get("cours_id") as string);
+  await exerciceService.publierExercice(BigInt(formData.get("exercice_id") as string));
+  invaliderCours(matiereId, chapitreId, coursId);
+}
+
+export async function depublierExerciceAction(formData: FormData): Promise<void> {
+  await requirePermission("contenu:gerer");
+  const matiereId = BigInt(formData.get("matiere_id") as string);
+  const chapitreId = BigInt(formData.get("chapitre_id") as string);
+  const coursId = BigInt(formData.get("cours_id") as string);
+  await exerciceService.depublierExercice(BigInt(formData.get("exercice_id") as string));
   invaliderCours(matiereId, chapitreId, coursId);
 }
 

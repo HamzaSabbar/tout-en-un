@@ -30,6 +30,29 @@ const SEGMENTS_MAX = 8;
 const LONGUEUR_MAX = 200;
 const SEGMENT_VALIDE = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 
+// Table inverse de `EXTENSION_PAR_MIME` dans `src/modules/contenu/document.ts` :
+// elle sert le `Content-Type` de la route locale. Elle fait aussi office de liste
+// blanche d'extensions, ce qui évite que les deux puissent divorcer — une clé que
+// cette table ne connaît pas est refusée, elle ne reçoit pas un type par défaut.
+//
+// Déduire le type de l'extension n'est pas du sniffing : l'extension est écrite
+// par nous au téléversement, à partir d'un type MIME validé, et la clé entière
+// est couverte par la signature. Le client ne choisit ni l'une ni l'autre.
+const TYPE_MIME_PAR_EXTENSION: Record<string, string> = {
+  pdf: "application/pdf",
+  png: "image/png",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  webp: "image/webp",
+};
+
+export function typeMimeDeCle(cle: string): string | null {
+  const dernierSegment = cle.split("/").pop() ?? "";
+  const point = dernierSegment.lastIndexOf(".");
+  if (point <= 0) return null;
+  return TYPE_MIME_PAR_EXTENSION[dernierSegment.slice(point + 1).toLowerCase()] ?? null;
+}
+
 // La clé revient du chemin d'URL, donc elle est traitée comme hostile même
 // signée. Le motif interdit `/`, `\`, l'octet nul, `..` et tout segment
 // commençant par un point : la traversée est refusée à la forme, avant toute
@@ -38,12 +61,13 @@ const SEGMENT_VALIDE = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 //
 // Volontairement plus permissif que le format de `construireCleStockage` : lier
 // le lecteur au format de l'écrivain casserait à la première évolution du nom.
+// Seule l'extension est imposée, parce que c'est elle qui décide du type servi.
 export function cleValide(cle: string): boolean {
   if (cle.length === 0 || cle.length > LONGUEUR_MAX) return false;
   const segments = cle.split("/");
   if (segments.length > SEGMENTS_MAX) return false;
   if (!segments.every((segment) => SEGMENT_VALIDE.test(segment))) return false;
-  return segments[segments.length - 1].toLowerCase().endsWith(".pdf");
+  return typeMimeDeCle(cle) !== null;
 }
 
 // Deuxième barrière, indépendante de la première : même si le motif laissait

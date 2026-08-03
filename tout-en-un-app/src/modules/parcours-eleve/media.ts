@@ -63,11 +63,23 @@ export function obtenirDocumentPourLecture(matiereId: bigint, documentId: bigint
   });
 }
 
+// Durée unique pour toute URL signée servie à un élève : dix minutes, assez pour
+// ouvrir la ressource, trop peu pour qu'un lien partagé reste utile. Elle est
+// définie ici, à un seul endroit, pour que PDF et images ne divergent pas.
+export const DUREE_LECTURE_SECONDES = 600;
+
+export async function genererLectureFichier(
+  cle: string,
+  stockage: Pick<StorageService, "genererUrlSignee"> = storageService,
+) {
+  return stockage.genererUrlSignee(cle, DUREE_LECTURE_SECONDES);
+}
+
 export async function genererLecturePdf(
   cle: string,
   stockage: Pick<StorageService, "genererUrlSignee"> = storageService,
 ) {
-  return stockage.genererUrlSignee(cle, 600);
+  return genererLectureFichier(cle, stockage);
 }
 
 // Le schéma des offres ne porte pas encore ce droit. La lecture ne l'accorde

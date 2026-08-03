@@ -4,13 +4,15 @@ interface ImageExerciceProps {
   // jamais de clé de stockage ni d'URL de fournisseur, seulement un chemin de
   // notre API et un identifiant (invariant 3).
   baseUrl: string;
-  fichierId: bigint;
+  // Chaîne de chiffres, forme sous laquelle le contenu riche stocke un
+  // identifiant : voir `identifiantFichierSchema`.
+  fichierId: string;
   alt: string;
   legende?: string;
 }
 
 export function ImageExercice({ baseUrl, fichierId, alt, legende }: ImageExerciceProps) {
-  const source = `${baseUrl}/${fichierId.toString()}`;
+  const source = `${baseUrl}/${fichierId}`;
 
   // `next/image` est écarté délibérément : son optimiseur va chercher l'image
   // côté serveur puis la met en cache sous `/_next/image`, cache public et non
