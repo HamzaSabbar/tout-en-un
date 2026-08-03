@@ -111,6 +111,94 @@ export async function supprimerExercice(id: bigint): Promise<void> {
   await prisma.exercice.update({ where: { id }, data: { supprime_le: new Date() } });
 }
 
+// Conditions de visibilité d'un exercice pour un élève : l'exercice, son cours,
+// son chapitre et sa matière publiés, et rien de supprimé. Écrit une seule fois,
+// puis réutilisé par chaque lecture élève, pour qu'aucune n'en oublie un morceau.
+function conditionExercicePublie(matiereId: bigint) {
+  return {
+    statut: "publie" as const,
+    supprime_le: null,
+    cours: {
+      statut: "publie" as const,
+      supprime_le: null,
+      chapitre: {
+        matiere_id: matiereId,
+        statut: "publie" as const,
+        supprime_le: null,
+        matiere: { statut: "publie" as const, supprime_le: null },
+      },
+    },
+  };
+}
+
+// Liste des exercices publiés d'un cours, pour la page de cours de l'élève. Le
+// contenu riche n'est **pas** sélectionné : la liste n'a besoin que des libellés,
+// et un énoncé complet par exercice traverserait le cache pour rien.
+export function listerExercicesPublies(matiereId: bigint, coursId: bigint) {
+  return prisma.exercice.findMany({
+    where: { cours_id: coursId, ...conditionExercicePublie(matiereId) },
+    orderBy: [{ ordre: "asc" }, { id: "asc" }],
+    select: { id: true, titre: true, difficulte: true },
+  });
+}
+
+// Lecture d'un exercice par un élève.
+//
+// L'aide et la correction ne sont renvoyées que si l'étape correspondante a été
+// franchie. C'est le même raisonnement que l'invariant 4 sur les bonnes réponses
+// d'un test : ce qui n'est pas encore dû à l'élève ne quitte pas le serveur. Les
+// masquer en CSS ou les envoyer puis les cacher côté client laisserait la réponse
+// lisible dans le HTML et dans la charge RSC.
+export async function obtenirExercicePourEleve(
+  matiereId: bigint,
+  coursId: bigint,
+  exerciceId: bigint,
+  etapes: { aideOuverte: boolean; correctionVue: boolean },
+) {
+  const exercice = await prisma.exercice.findFirst({
+    where: { id: exerciceId, cours_id: coursId, ...conditionExercicePublie(matiereId) },
+    select: {
+      id: true,
+      titre: true,
+      difficulte: true,
+      enonce: true,
+      aide: true,
+      correction_texte: true,
+      correction_video_ref: true,
+      cours: { select: { id: true, titre: true, chapitre_id: true } },
+    },
+  });
+  if (!exercice) return null;
+
+  return {
+    id: exercice.id,
+    titre: exercice.titre,
+    difficulte: exercice.difficulte,
+    cours: exercice.cours,
+    enonce: analyserDocumentRiche(exercice.enonce),
+    // `aideDisponible` dit qu'une aide existe, sans en livrer le contenu : c'est
+    // ce qui permet d'afficher ou non le bouton.
+    aideDisponible: exercice.aide !== null,
+    aide: etapes.aideOuverte ? analyserDocumentRiche(exercice.aide) : null,
+    correctionDisponible: exercice.correction_texte !== null,
+    correctionTexte: etapes.correctionVue ? analyserDocumentRiche(exercice.correction_texte) : null,
+    correctionVideoDisponible: exercice.correction_video_ref !== null,
+  };
+}
+
+// Référence de la vidéo de correction, servie par sa route dédiée. La référence
+// reste neutre (identifiant plus fournisseur), jamais une URL.
+export async function obtenirCorrectionVideoExercice(
+  matiereId: bigint,
+  exerciceId: bigint,
+): Promise<string | null> {
+  const exercice = await prisma.exercice.findFirst({
+    where: { id: exerciceId, ...conditionExercicePublie(matiereId) },
+    select: { correction_video_ref: true },
+  });
+  return exercice?.correction_video_ref ?? null;
+}
+
 // Autorise la lecture d'une image d'exercice.
 //
 // La règle est celle du contenu : l'exercice, son cours, son chapitre et sa
@@ -129,21 +217,7 @@ export async function obtenirImageExercice(
   fichierId: bigint,
 ): Promise<{ cle_stockage: string; type_mime: string } | null> {
   const exercice = await prisma.exercice.findFirst({
-    where: {
-      id: exerciceId,
-      statut: "publie",
-      supprime_le: null,
-      cours: {
-        statut: "publie",
-        supprime_le: null,
-        chapitre: {
-          matiere_id: matiereId,
-          statut: "publie",
-          supprime_le: null,
-          matiere: { statut: "publie", supprime_le: null },
-        },
-      },
-    },
+    where: { id: exerciceId, ...conditionExercicePublie(matiereId) },
     select: { enonce: true, aide: true, correction_texte: true },
   });
   if (!exercice) return null;

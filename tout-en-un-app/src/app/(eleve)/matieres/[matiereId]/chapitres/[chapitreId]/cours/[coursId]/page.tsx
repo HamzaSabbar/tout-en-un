@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { FileText } from "lucide-react";
+import { FileText, PenLine } from "lucide-react";
 import { AccesRefuse } from "@/components/acces-refuse";
 import { VideoFacade } from "@/components/eleve/video-facade";
 import { buttonVariants } from "@/components/ui/button";
@@ -56,7 +56,11 @@ export default async function CoursPage({ params }: CoursPageProps) {
                   <CardHeader><CardTitle className="text-base">{video.titre}</CardTitle></CardHeader>
                   <CardContent className="space-y-3">
                     {video.description && <p className="text-sm text-muted-foreground">{video.description}</p>}
-                    <VideoFacade matiereId={matiereId.toString()} videoId={video.id.toString()} titre={video.titre} />
+                    <VideoFacade
+                      urlLecture={`/api/matieres/${matiereId}/videos/${video.id}/lecture`}
+                      cle={video.id.toString()}
+                      titre={video.titre}
+                    />
                   </CardContent>
                 </Card>
               </li>
@@ -85,6 +89,37 @@ export default async function CoursPage({ params }: CoursPageProps) {
                     >
                       {ELEVE_FR.ressources.ouvrirPdf}
                     </a>
+                  </CardContent>
+                </Card>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section aria-labelledby="exercices-titre" className="space-y-4">
+        <h2 id="exercices-titre" className="text-xl font-semibold">{ELEVE_FR.ressources.exercices}</h2>
+        {cours.exercices.length === 0 ? (
+          <p className="text-muted-foreground">{ELEVE_FR.ressources.aucunExercice}</p>
+        ) : (
+          <ul className="space-y-3">
+            {cours.exercices.map((exercice) => (
+              <li key={exercice.id} data-exercice-card={exercice.id}>
+                <Card>
+                  <CardContent className="flex flex-col gap-3 pt-6 sm:flex-row sm:items-center">
+                    <PenLine aria-hidden="true" className="size-6 shrink-0 text-muted-foreground" />
+                    <div className="flex-1">
+                      <p className="font-medium">{exercice.titre}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {ELEVE_FR.exercice.difficulte} {exercice.difficulte}/5
+                      </p>
+                    </div>
+                    <Link
+                      href={`/matieres/${matiereId}/chapitres/${chapitreId}/cours/${coursId}/exercices/${exercice.id}`}
+                      className={buttonVariants({ className: "min-h-11" })}
+                    >
+                      {ELEVE_FR.ressources.ouvrirExercice}
+                    </Link>
                   </CardContent>
                 </Card>
               </li>

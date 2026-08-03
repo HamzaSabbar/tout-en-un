@@ -24,6 +24,9 @@ import {
   creerExercice,
   depublierExercice,
   listerExercices,
+  listerExercicesPublies,
+  obtenirCorrectionVideoExercice,
+  obtenirExercicePourEleve,
   obtenirImageExercice,
   publierExercice,
   supprimerExercice,
@@ -161,6 +164,142 @@ describe("publication et suppression", () => {
       where: { id: BigInt(7) },
       data: { supprime_le: expect.any(Date) },
     });
+  });
+});
+
+describe("listerExercicesPublies", () => {
+  it("exige un exercice publié et ne sélectionne aucun contenu riche", async () => {
+    findManyExercice.mockResolvedValue([]);
+    await listerExercicesPublies(BigInt(1), BigInt(3));
+
+    const requete = findManyExercice.mock.calls[0][0];
+    expect(requete.where.statut).toBe("publie");
+    expect(requete.where.cours_id).toBe(BigInt(3));
+    expect(requete.select).toEqual({ id: true, titre: true, difficulte: true });
+  });
+});
+
+// Le cœur du parcours à étapes : ce qui n'est pas encore dû à l'élève ne quitte
+// pas le serveur. Le masquer côté client laisserait la réponse lisible dans le
+// HTML et dans la charge RSC, exactement comme livrer `est_correcte` avec les
+// options d'un test.
+describe("obtenirExercicePourEleve", () => {
+  const LIGNE = {
+    id: BigInt(9),
+    titre: "Chute libre",
+    difficulte: 3,
+    enonce: JSON.parse(ENONCE),
+    aide: JSON.parse(
+      JSON.stringify({ version: 1, noeuds: [{ type: "paragraphe", texte: "Pense à $g$." }] }),
+    ),
+    correction_texte: JSON.parse(
+      JSON.stringify({ version: 1, noeuds: [{ type: "paragraphe", texte: "v = 15 m/s" }] }),
+    ),
+    correction_video_ref: "abc123def",
+    cours: { id: BigInt(3), titre: "Cinématique", chapitre_id: BigInt(2) },
+  };
+
+  it("ne renvoie ni l'aide ni la correction avant leur étape", async () => {
+    findFirstExercice.mockResolvedValue(LIGNE);
+
+    const exercice = await obtenirExercicePourEleve(BigInt(1), BigInt(3), BigInt(9), {
+      aideOuverte: false,
+      correctionVue: false,
+    });
+
+    expect(exercice?.enonce).not.toBeNull();
+    expect(exercice?.aide).toBeNull();
+    expect(exercice?.correctionTexte).toBeNull();
+    // Leur existence est annoncée, sans leur contenu : c'est ce qui permet
+    // d'afficher le bouton de l'étape suivante.
+    expect(exercice?.aideDisponible).toBe(true);
+    expect(exercice?.correctionDisponible).toBe(true);
+    expect(exercice?.correctionVideoDisponible).toBe(true);
+  });
+
+  it("renvoie l'aide une fois son étape franchie, sans la correction", async () => {
+    findFirstExercice.mockResolvedValue(LIGNE);
+
+    const exercice = await obtenirExercicePourEleve(BigInt(1), BigInt(3), BigInt(9), {
+      aideOuverte: true,
+      correctionVue: false,
+    });
+
+    expect(exercice?.aide).not.toBeNull();
+    expect(exercice?.correctionTexte).toBeNull();
+  });
+
+  it("renvoie la correction une fois son étape franchie", async () => {
+    findFirstExercice.mockResolvedValue(LIGNE);
+
+    const exercice = await obtenirExercicePourEleve(BigInt(1), BigInt(3), BigInt(9), {
+      aideOuverte: true,
+      correctionVue: true,
+    });
+
+    expect(exercice?.correctionTexte).not.toBeNull();
+  });
+
+  // La référence de la vidéo n'est jamais rendue avec la page : elle passe par sa
+  // route, après un nouveau contrôle d'accès et seulement au clic.
+  it("n'expose jamais la référence de la vidéo de correction", async () => {
+    findFirstExercice.mockResolvedValue(LIGNE);
+
+    const exercice = await obtenirExercicePourEleve(BigInt(1), BigInt(3), BigInt(9), {
+      aideOuverte: true,
+      correctionVue: true,
+    });
+
+    // Sérialisation avec les BigInt rendus en texte : l'objet en contient, et
+    // c'est bien la totalité de ce qui partirait vers le client qu'on inspecte.
+    const serialise = JSON.stringify(exercice, (_cle, valeur) =>
+      typeof valeur === "bigint" ? valeur.toString() : valeur,
+    );
+    expect(serialise).not.toContain("abc123def");
+  });
+
+  it("annonce l'absence d'aide sans se tromper de champ", async () => {
+    findFirstExercice.mockResolvedValue({
+      ...LIGNE,
+      aide: null,
+      correction_texte: null,
+      correction_video_ref: null,
+    });
+
+    const exercice = await obtenirExercicePourEleve(BigInt(1), BigInt(3), BigInt(9), {
+      aideOuverte: true,
+      correctionVue: true,
+    });
+
+    expect(exercice?.aideDisponible).toBe(false);
+    expect(exercice?.correctionDisponible).toBe(false);
+    expect(exercice?.correctionVideoDisponible).toBe(false);
+  });
+
+  it("rend null quand l'exercice n'est pas visible", async () => {
+    findFirstExercice.mockResolvedValue(null);
+    const exercice = await obtenirExercicePourEleve(BigInt(1), BigInt(3), BigInt(9), {
+      aideOuverte: true,
+      correctionVue: true,
+    });
+    expect(exercice).toBeNull();
+  });
+});
+
+describe("obtenirCorrectionVideoExercice", () => {
+  it("rend la référence neutre d'un exercice publié", async () => {
+    findFirstExercice.mockResolvedValue({ correction_video_ref: "abc123def" });
+    expect(await obtenirCorrectionVideoExercice(BigInt(1), BigInt(9))).toBe("abc123def");
+  });
+
+  it("rend null quand l'exercice n'est pas visible", async () => {
+    findFirstExercice.mockResolvedValue(null);
+    expect(await obtenirCorrectionVideoExercice(BigInt(1), BigInt(9))).toBeNull();
+  });
+
+  it("rend null quand l'exercice n'a pas de correction vidéo", async () => {
+    findFirstExercice.mockResolvedValue({ correction_video_ref: null });
+    expect(await obtenirCorrectionVideoExercice(BigInt(1), BigInt(9))).toBeNull();
   });
 });
 
