@@ -137,6 +137,16 @@ la route locale autorise par capacité signée plutôt qu'en rappelant
 
 Signalés pour ne pas être perdus, volontairement non corrigés ici.
 
+- **Terminal cible révisé après la clôture.** Le lot 3 a été conçu et vérifié
+  sous l'hypothèse mobile-first : la recette valide 375 px, et les pages élève
+  sont contenues dans une colonne de 768 px (`max-w-3xl`). L'ordinateur à grand
+  écran est désormais le terminal dominant (architecture section 2). Les pages
+  fonctionnent sur grand écran mais n'en exploitent pas la largeur, et aucune
+  recette ne couvre ce cas. À traiter comme un chantier propre, pas comme une
+  retouche : mises en page larges, et vérification Playwright à un viewport de
+  bureau. Le plafond de 200 Ko reste mesuré et bloquant, c'est lui qui garantit
+  que le téléphone reste utilisable pendant cet enrichissement.
+
 - La table `document` n'a pas de colonne `cree_le` : la migration
   `20260731181043_ajoute_cree_le_contenu` a couvert `chapitre`, `cours`,
   `filiere`, `matiere`, `offre` et `video`, mais l'a omise. Une ligne de document

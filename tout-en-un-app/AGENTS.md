@@ -58,8 +58,14 @@ Lots de développement et critères de sortie : `docs/roadmap.md`.
 - Une page de cours se charge en une requête agrégée. Un `include` Prisma
   imbriqué est préférable à une boucle de requêtes. Les schémas N+1 sont un
   défaut bloquant, pas une optimisation à faire plus tard.
-- Cible mobile : 200 Ko de JavaScript par page élève. Le lecteur vidéo et les
-  composants lourds sont chargés en différé.
+- L'élève travaille surtout sur un écran large : les pages élève exploitent la
+  largeur disponible. Le téléphone reste pris en charge jusqu'à 360 px.
+- Plafond ferme de 200 Ko de JavaScript par page élève, mesuré par
+  `npm run budget:js` et bloquant en intégration continue. Ce n'est pas un
+  objectif mobile mais le garde-fou qui empêche l'expérience téléphone de se
+  dégrader quand l'interface grand écran s'enrichit. Le lecteur vidéo et les
+  composants lourds sont chargés en différé. Ce qui est ajouté pour le grand
+  écran ne doit pas être téléchargé par le téléphone puis masqué en CSS.
 - Le champ `video_ref` est neutre (identifiant plus fournisseur) pour permettre
   de changer d'hébergeur vidéo sans migration. Ne code pas d'URL YouTube en dur.
 - Les pondérations de la formule de progression vivent dans la table

@@ -95,10 +95,34 @@ administrateur. Trois conséquences d'architecture :
 | Lives | 2 à 4 par semaine | 10 à 20 par semaine |
 | Questions support | 10 à 40 par jour | 200 et plus par jour |
 
-Terminal dominant : mobile Android sur réseau 4G. L'architecture est
-mobile-first, tolérante à une bande passante irrégulière, et économe en coût
-d'infrastructure. Une base relationnelle unique correctement indexée couvre
-confortablement ces volumes.
+**Terminal dominant : ordinateur à grand écran.** L'élève travaille le plus
+souvent assis, sur un écran large. Le téléphone est un usage secondaire mais
+pleinement pris en charge : réviser en déplacement, revoir une correction, suivre
+un live. L'interface est donc conçue pour l'écran large d'abord, puis repliée
+proprement jusqu'à 360 px de largeur.
+
+Trois conséquences d'architecture :
+
+- Les pages élève **exploitent la largeur disponible** plutôt que de rester dans
+  une colonne étroite : listes en plusieurs colonnes, sommaire et contenu côte à
+  côte quand la place le permet, tableaux lisibles sans défilement horizontal.
+- Les contraintes de poids et de latence du cas mobile **restent des plafonds
+  fermes**, vérifiés en intégration continue. Ce sont elles qui font que « le
+  téléphone reste possible » demeure vrai dans la durée plutôt qu'une intention :
+  un budget qu'on ne mesure plus est un budget déjà perdu. Elles sont
+  aujourd'hui tenues avec de la marge, ce qui laisse de la place pour enrichir
+  l'expérience sur grand écran.
+- Le rendu reste tolérant à une bande passante irrégulière et économe en coût
+  d'infrastructure : ces qualités servent les deux terminaux, pas seulement le
+  téléphone.
+
+Une base relationnelle unique correctement indexée couvre confortablement ces
+volumes.
+
+Historique : le projet a démarré sur l'hypothèse inverse, mobile-first avec un
+terminal Android dominant. L'arbitrage a été révisé après le lot 3 sur constat
+d'usage. Les décisions prises sous l'ancienne hypothèse restent valides, elles
+n'étaient pas dictées par elle seule, mais leur justification a changé de poids.
 
 **Principes retenus.**
 
@@ -408,8 +432,10 @@ Le champ `video_ref` est volontairement neutre (identifiant plus fournisseur).
 Changer d'hébergeur se limite à mettre à jour ces références et un composant de
 lecture, sans toucher au modèle de données.
 
-Les vidéos de cours suivent un découpage en segments de 8 à 11 minutes, adapté à
-la consommation mobile et au suivi fin de progression.
+Les vidéos de cours suivent un découpage en segments de 8 à 11 minutes. Ce
+découpage sert d'abord le suivi fin de progression et la reprise après
+interruption, quel que soit le terminal ; il reste par ailleurs adapté à une
+consultation au téléphone.
 
 ### Documents PDF
 
@@ -482,7 +508,8 @@ mesures proportionnées au MVP :
 Un exercice n'est pas un PDF. Son énoncé, son aide et sa correction sont stockés
 en contenu riche structuré (JSON de type document) autorisant paragraphes,
 formules LaTeX, images et listes. Ce choix rend le contenu interrogeable,
-réutilisable et affichable proprement sur mobile.
+réutilisable, et affichable proprement à toute largeur d'écran : c'est le rendu
+qui s'adapte, pas le contenu qui est saisi deux fois.
 
 Le parcours élève suit une progression à étapes, chaque étape franchie étant
 journalisée :
@@ -665,8 +692,24 @@ confidentialité claire ne sont pas optionnelles.
 
 ## 16. Performance
 
-- Cible mobile : premier affichage utile en moins de 2,5 secondes en 4G
-  marocaine, budget de 200 Ko de JavaScript par page élève.
+Deux cibles, toutes deux contraignantes. La première décrit l'usage courant, la
+seconde est le plancher qui garantit que le téléphone reste utilisable.
+
+| Cible | Contrainte | Vérification |
+|---|---|---|
+| Ordinateur, écran large, connexion fixe | Premier affichage utile sous 1 seconde | Mesure manuelle en préproduction |
+| Téléphone, 4G marocaine irrégulière | Premier affichage utile sous 2,5 secondes, **200 Ko de JavaScript par page élève** | Scénario Playwright sous profil 4G et `npm run budget:js`, tous deux en intégration continue |
+
+Le budget de 200 Ko n'est pas un objectif de confort mobile : c'est la seule chose
+qui empêche l'expérience téléphone de se dégrader silencieusement à mesure que
+l'interface pour grand écran s'enrichit. Il reste donc mesuré et bloquant en
+intégration continue, même si l'ordinateur est le terminal dominant.
+
+Corollaire pour les mises en page larges : ce qui est ajouté pour le grand écran
+ne doit pas être téléchargé par le téléphone pour être ensuite masqué. Un panneau
+latéral, un tableau dense ou un lecteur enrichi se chargent en différé selon la
+largeur réelle, ils ne sont pas cachés en CSS.
+
 - Rendu serveur avec mise en cache des pages de structure (liste des chapitres,
   fiche de cours) et invalidation ciblée à la publication.
 - Chargement différé des lecteurs vidéo et des composants lourds, images en WebP

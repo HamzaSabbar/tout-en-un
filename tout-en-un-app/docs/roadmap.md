@@ -150,8 +150,8 @@ Architecture : sections 5.1, 6, 13.
 
 ## Lot 3. Parcours élève
 
-10 j, critique. Ouvrir l'espace élève en rendu serveur, mobile-first sur réseau
-4G irrégulier.
+10 j, critique. Ouvrir l'espace élève en rendu serveur, pour un écran large en
+usage courant et un téléphone sur réseau 4G irrégulier en usage secondaire.
 
 - [x] Choix de la matière, puis tableau de bord à quatre cartes : progression,
       prochain live, dernière note, compte à rebours du national
@@ -185,10 +185,16 @@ L'index de `video` existe déjà. Les modèles `exercice` et `extrait_national`
 n'existent pas encore ; leurs index restent à créer dans leurs lots propriétaires
 sans introduire prématurément de nouvelles tables au lot 3.
 
-**Critère de sortie.** Un élève abonné parcourt une matière complète sur mobile,
-regarde une vidéo et ouvre un PDF. Aucune URL de fichier ou de vidéo n'apparaît
-en clair dans le HTML. Le premier affichage utile tient sous 2,5 secondes en 4G
-et le budget de 200 Ko de JavaScript par page est respecté.
+**Critère de sortie.** Un élève abonné parcourt une matière complète, regarde une
+vidéo et ouvre un PDF, sur écran large comme sur téléphone. Aucune URL de fichier
+ou de vidéo n'apparaît en clair dans le HTML. Le premier affichage utile tient
+sous 2,5 secondes en 4G et le budget de 200 Ko de JavaScript par page est
+respecté.
+
+Vérifié à 375 px de large. **La vérification à grand écran reste à écrire**, et
+les pages élève sont pour l'instant contenues dans une colonne de 768 px : c'est
+une dette ouverte par la révision du terminal cible, pas un choix (voir
+architecture section 2).
 
 Architecture : sections 8, 16.
 
@@ -209,8 +215,9 @@ modéliser.
 - [ ] Difficulté de 1 à 5, rattachement au cours
 
 **Critère de sortie.** Le professeur crée un exercice contenant formules LaTeX et
-image, et l'élève le traite étape par étape depuis un téléphone. Chaque étape
-franchie produit une ligne dans `evenement_apprentissage`.
+image, et l'élève le traite étape par étape, sur écran large comme depuis un
+téléphone. Chaque étape franchie produit une ligne dans
+`evenement_apprentissage`.
 
 Ne pas prototyper en abstrait : créer deux ou trois exercices réels de
 Physique-Chimie avant d'industrialiser la saisie. Le contenu riche est le point
