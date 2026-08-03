@@ -30,8 +30,39 @@ enum TypeDocument {
   correction_pdf
   sujet_pdf
   support_live
+  // Image intégrée au contenu riche d'un exercice. Elle passe par la même table
+  // `fichier` que les PDF, donc par une URL signée : le contenu riche ne stocke
+  // qu'un identifiant, jamais une URL (invariant 3).
+  image_exercice
 
   @@map("type_document")
+}
+
+enum RessourceApprentissage {
+  video
+  exercice
+  extrait
+  examen
+  test
+
+  @@map("ressource_apprentissage")
+}
+
+// Architecture 5.5 énumère vue, terminee, reussi, a_refaire et test_valide.
+// `aide_ouverte` et `correction_vue` sont ajoutées au lot 4 : la section 9 exige
+// de savoir quelle proportion d'élèves ouvre l'aide d'un exercice, ce qu'aucune
+// des valeurs d'origine ne permet d'exprimer. Architecture 5.5 est mise à jour
+// dans le même commit.
+enum ActionApprentissage {
+  vue
+  terminee
+  aide_ouverte
+  correction_vue
+  reussi
+  a_refaire
+  test_valide
+
+  @@map("action_apprentissage")
 }
 
 enum StatutAbonnement {
@@ -81,6 +112,7 @@ model Utilisateur {
   demandes_matiere        DemandeMatiere[]        @relation("demandeur")
   demandes_traitees       DemandeMatiere[]        @relation("traitant")
   actions_admin           JournalAdmin[]
+  evenements              EvenementApprentissage[]
 
   @@index([filiere_id])
   @@map("utilisateur")
@@ -204,6 +236,7 @@ model Cours {
   professeur Utilisateur? @relation(fields: [professeur_id], references: [id])
   videos     Video[]
   documents  Document[]
+  exercices  Exercice[]
 
   @@index([chapitre_id, statut, ordre])
   @@map("cours")
@@ -261,6 +294,61 @@ model Document {
   fichier  Fichier   @relation(fields: [fichier_id], references: [id])
 
   @@map("document")
+}
+
+// Un exercice n'est pas un PDF : énoncé, aide et correction sont du contenu riche
+// structuré (architecture 9). Le JSON suit un jeu fermé de types de nœuds validé
+// par Zod à l'écriture, jamais de HTML brut.
+//
+// `cree_le` est non nullable, contrairement aux autres tables de contenu : leur
+// nullabilité vient des lignes antérieures à la migration, dont la date est
+// inconnue. Cette table est neuve, elle n'en a aucune. `difficulte` est bornée à
+// l'intervalle 1..5 par une contrainte CHECK ajoutée à la main dans la migration,
+// Prisma ne sachant pas l'exprimer.
+model Exercice {
+  id                   BigInt    @id @default(autoincrement())
+  cours_id             BigInt
+  titre                String
+  enonce               Json
+  aide                 Json?
+  correction_texte     Json?
+  correction_video_ref String?
+  difficulte           Int       @default(3)
+  ordre                Int       @default(0)
+  statut               Statut    @default(brouillon)
+  cree_le              DateTime  @default(now())
+  supprime_le          DateTime?
+
+  cours Cours @relation(fields: [cours_id], references: [id])
+
+  @@index([cours_id, statut, ordre])
+  @@map("exercice")
+}
+
+// Journal immuable de l'activité d'apprentissage (architecture 5.5). Créé au
+// lot 4 parce que son critère de sortie en dépend, alors que la roadmap le liste
+// sous le lot 7. Le lot 4 y écrit des faits ; le lot 7 en dérivera les agrégats
+// de progression. Aucun pourcentage n'est calculé ici.
+//
+// `cree_le` est non nullable : table neuve, aucune ligne antérieure à dater.
+model EvenementApprentissage {
+  id             BigInt                 @id @default(autoincrement())
+  utilisateur_id BigInt
+  matiere_id     BigInt
+  chapitre_id    BigInt?
+  cours_id       BigInt?
+  ressource_type RessourceApprentissage
+  ressource_id   BigInt
+  action         ActionApprentissage
+  valeur         Decimal?               @db.Decimal(6, 2)
+  duree_secondes Int?
+  cree_le        DateTime               @default(now())
+
+  utilisateur Utilisateur @relation(fields: [utilisateur_id], references: [id])
+
+  @@index([utilisateur_id, cree_le])
+  @@index([ressource_type, ressource_id, action])
+  @@map("evenement_apprentissage")
 }
 
 model Offre {
