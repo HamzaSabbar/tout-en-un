@@ -116,7 +116,9 @@ Statuts : `[ ]` à faire, `[x]` vérifié, `[!]` bloqué avec cause et prochaine
       `compterResiduE2E()` les compte.
 - [x] `docs/roadmap.md` coche les éléments implémentés dans le même commit que le
       code, et `docs/architecture.md` sections 5.5, 5.9 et 9 sont à jour.
-- [ ] Le job `CI / ci` réussit sur la pull request.
+- [x] Le job `CI / ci` réussit sur la pull request. PR #9, exécution verte,
+      fusionnée en `606c635`. La CI post-fusion sur `main` est verte elle aussi,
+      comme celle de la PR #8 (`759a76e`) sur laquelle le lot était empilé.
 
 ### Ce que la recette a trouvé, et que les tests unitaires ne pouvaient pas voir
 
