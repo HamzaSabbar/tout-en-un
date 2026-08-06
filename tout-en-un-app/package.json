@@ -12,6 +12,7 @@
     "test:e2e": "playwright test",
     "budget:js": "node scripts/verifier-budget-js-eleve.mjs",
     "seed:admin": "node prisma/seed-admin.ts",
+    "seed:exercices": "node scripts/seed-exercices-pc.ts",
     "inventaire": "node scripts/inventaire-dev.ts",
     "menage:test": "node scripts/menage-donnees-test.ts",
     "postinstall": "prisma generate"

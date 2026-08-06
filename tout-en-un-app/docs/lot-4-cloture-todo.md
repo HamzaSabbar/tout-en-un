@@ -150,9 +150,8 @@ Signalés pour ne pas être perdus, volontairement non corrigés ici.
 
 - **La saisie du contenu riche se fait en JSON** dans un champ de texte, avec
   prévisualisation des formules et validation à l'enregistrement. C'est utilisable
-  par le professeur mais austère. Un éditeur assisté ne se justifiera qu'une fois
-  écrits les deux ou trois exercices réels de Physique-Chimie que la roadmap
-  réclame : c'est eux qui diront ce qui gêne vraiment.
+  par le professeur mais austère. Un éditeur assisté reste à décider.
+
 - **La table `document` n'a toujours pas de colonne `cree_le`**, oubliée par la
   migration `20260731181043_ajoute_cree_le_contenu`. Non corrigé ici pour ne pas
   mêler un correctif sans rapport à la migration du lot : il vaut une migration à
@@ -161,3 +160,30 @@ Signalés pour ne pas être perdus, volontairement non corrigés ici.
   la convention de pagination par curseur. Indépendant du lot 4.
 - **Le bucket privé Supabase de production n'est pas provisionné.** Inchangé
   depuis le lot 3 : tâche d'exploitation à mener avant l'ouverture commerciale.
+
+### Ce que trois exercices réels ont appris au modèle de contenu
+
+La roadmap demandait d'écrire deux ou trois exercices réels de Physique-Chimie
+avant d'industrialiser la saisie. C'est fait : `scripts/seed-exercices-pc.ts` en
+porte trois, dans le style des examens nationaux, sur trois parties distinctes du
+programme (ondes, dipôle RC, cinétique chimique). Les 76 formules qu'ils
+contiennent compilent toutes sous KaTeX.
+
+L'exercice a payé : il manque **deux types de nœuds** au modèle, et aucun test
+unitaire ne pouvait le dire, puisqu'ils testent ce que le modèle sait faire.
+
+1. **Aucun tableau.** Un suivi temporel donne un tableau de mesures, et une
+   étude de réaction un tableau d'avancement : ce sont des figures imposées du
+   programme, pas des cas limites. Faute de mieux, le tableau de mesures est
+   aujourd'hui un nœud `code`. Le rendu est acceptable — police à chasse fixe,
+   colonnes alignées — mais la sémantique est fausse : un lecteur d'écran annonce
+   du code, et la mise en forme ne s'adapte pas à la largeur. Il faut un nœud
+   `tableau` avec en-têtes et lignes.
+2. **Aucune emphase.** Écrire `**le réactif limitant**` par réflexe affiche les
+   astérisques telles quelles. Le professeur le rencontrera à son premier
+   exercice. Une emphase en ligne, dans la même grammaire que les formules entre
+   dollars, réglerait le cas sans ouvrir la porte au HTML.
+
+Aucun des deux n'est corrigé ici : ce sont des évolutions du modèle de contenu,
+donc du schéma, du rendu et de la documentation. Elles méritent leur propre
+décision plutôt qu'un ajout discret en fin de lot.
