@@ -3,8 +3,8 @@ import { notFound } from "next/navigation";
 import { AccesRefuse } from "@/components/acces-refuse";
 import { DocumentRicheVue } from "@/components/contenu-riche/document";
 import { COQUILLE_ELEVE } from "@/components/eleve/coquille";
+import { CorrectionVideo } from "@/components/eleve/correction-video";
 import { MarqueurEtape } from "@/components/eleve/marqueur-etape";
-import { VideoFacade } from "@/components/eleve/video-facade";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,13 +12,6 @@ import { ELEVE_FR } from "@/lib/i18n/eleve.fr";
 import { analyserIdentifiant } from "@/lib/identifiant";
 import { verifierAccesMatiere } from "@/modules/acces/acces-matiere";
 import { requireAuth } from "@/modules/acces/require-auth";
-import {
-  autoEvaluerAction,
-  marquerCorrectionVideoVueAction,
-  marquerEnonceVuAction,
-  ouvrirAideAction,
-  voirCorrectionAction,
-} from "@/modules/apprentissage/actions";
 import { etatEtapesExercice } from "@/modules/exercice/etapes";
 import { obtenirExercicePourEleve } from "@/modules/exercice/service";
 
@@ -29,6 +22,28 @@ interface ExercicePageProps {
     coursId: string;
     exerciceId: string;
   }>;
+  // `etape` nomme l'étape qui vient d'être franchie. Les actions y redirigent :
+  // voir `reafficherExercice` pour les deux raisons, l'annonce et la fiabilité du
+  // réaffichage.
+  searchParams: Promise<{ etape?: string }>;
+}
+
+// Annonce lue par un lecteur d'écran après un franchissement. Les libellés
+// restent dans le dictionnaire, mais la correspondance vit ici : c'est le seul
+// endroit qui connaît le vocabulaire du paramètre d'URL.
+//
+// L'auto-évaluation n'y figure pas : son résultat est déjà affiché dans un
+// paragraphe `role="status"`, donc déjà annoncé. L'ajouter ici le ferait entendre
+// deux fois.
+function annonceEtape(etape: string | undefined): string | null {
+  switch (etape) {
+    case "aide":
+      return ELEVE_FR.exercice.annonceAide;
+    case "correction":
+      return ELEVE_FR.exercice.annonceCorrection;
+    default:
+      return null;
+  }
 }
 
 // Fiche d'exercice : cinq étapes, rendues côté serveur.
@@ -41,9 +56,9 @@ interface ExercicePageProps {
 // renvoie pas avant leur étape, donc elles ne sont ni dans le HTML, ni dans la
 // charge RSC. Même raisonnement que l'invariant 4 sur les bonnes réponses d'un
 // test.
-export default async function ExercicePage({ params }: ExercicePageProps) {
+export default async function ExercicePage({ params, searchParams }: ExercicePageProps) {
   const utilisateur = await requireAuth();
-  const valeurs = await params;
+  const [valeurs, parametres] = await Promise.all([params, searchParams]);
   const matiereId = analyserIdentifiant(valeurs.matiereId);
   const chapitreId = analyserIdentifiant(valeurs.chapitreId);
   const coursId = analyserIdentifiant(valeurs.coursId);
@@ -69,25 +84,47 @@ export default async function ExercicePage({ params }: ExercicePageProps) {
     exerciceId: exerciceId.toString(),
   };
 
-  // Les champs cachés voyagent en clair, donc chaque action les revalide et
-  // revérifie l'accès à la matière avant d'écrire quoi que ce soit.
+  // Les champs cachés voyagent en clair : la route les revalide et revérifie
+  // l'accès à la matière avant d'écrire quoi que ce soit.
   const champsContexte = (
     <>
-      <input type="hidden" name="matiere_id" value={contexte.matiereId} />
       <input type="hidden" name="chapitre_id" value={contexte.chapitreId} />
       <input type="hidden" name="cours_id" value={contexte.coursId} />
-      <input type="hidden" name="exercice_id" value={contexte.exerciceId} />
     </>
   );
 
   const baseUrlImages = `/api/matieres/${matiereId}/exercices/${exerciceId}/images`;
+  // Toutes les étapes passent par cette route, aucune par une action serveur :
+  // voir la route elle-même, qui porte la raison en détail. Les formulaires
+  // ci-dessous sont donc des formulaires HTML ordinaires, et le franchissement
+  // fonctionne sans JavaScript.
+  const urlEtape = `/api/matieres/${matiereId}/exercices/${exerciceId}/etape`;
 
   return (
     <main
       className={`${COQUILLE_ELEVE} flex min-h-screen flex-col gap-8 py-8`}
       data-exercice={exerciceId.toString()}
     >
-      <MarqueurEtape signaler={marquerEnonceVuAction.bind(null, contexte)} />
+      {/* Région d'annonce : le contenu de la page change après un appui sur un
+          bouton, et sans cela le changement passe inaperçu d'un lecteur
+          d'écran. */}
+      <p role="status" aria-live="polite" className="sr-only">
+        {annonceEtape(parametres.etape)}
+      </p>
+
+      {/* Seulement à l'arrivée sur l'exercice, pas après un franchissement :
+          chaque étape recharge la page, et sans cette garde une seule séance
+          écrirait cinq « vue » alors que l'élève n'a ouvert l'exercice qu'une
+          fois. Le journal doit dire ce qui s'est passé, pas ce que la mécanique
+          d'affichage a provoqué. */}
+      {!parametres.etape && (
+        <MarqueurEtape
+          url={urlEtape}
+          chapitreId={contexte.chapitreId}
+          coursId={contexte.coursId}
+          etape="enonce"
+        />
+      )}
 
       <header className="space-y-3">
         <Link
@@ -139,8 +176,9 @@ export default async function ExercicePage({ params }: ExercicePageProps) {
             ) : exercice.aide ? (
               <DocumentRicheVue document={exercice.aide} baseUrlImages={baseUrlImages} />
             ) : (
-              <form action={ouvrirAideAction}>
+              <form method="post" action={urlEtape}>
                 {champsContexte}
+                <input type="hidden" name="etape" value="aide" />
                 <Button type="submit" variant="outline" className="min-h-11">
                   {ELEVE_FR.exercice.demanderAide}
                 </Button>
@@ -157,8 +195,9 @@ export default async function ExercicePage({ params }: ExercicePageProps) {
             ) : exercice.correctionTexte ? (
               <DocumentRicheVue document={exercice.correctionTexte} baseUrlImages={baseUrlImages} />
             ) : (
-              <form action={voirCorrectionAction}>
+              <form method="post" action={urlEtape}>
                 {champsContexte}
+                <input type="hidden" name="etape" value="correction" />
                 <Button type="submit" className="min-h-11">
                   {ELEVE_FR.exercice.voirCorrection}
                 </Button>
@@ -178,11 +217,13 @@ export default async function ExercicePage({ params }: ExercicePageProps) {
               <h2 id="correction-video-titre" className="text-xl font-semibold">
                 {ELEVE_FR.exercice.correctionVideo}
               </h2>
-              <VideoFacade
+              <CorrectionVideo
                 urlLecture={`/api/matieres/${matiereId}/exercices/${exerciceId}/correction-video`}
+                urlEtape={urlEtape}
+                chapitreId={contexte.chapitreId}
+                coursId={contexte.coursId}
                 cle={`exercice-${exerciceId}`}
                 titre={`${ELEVE_FR.exercice.correctionVideo} — ${exercice.titre}`}
-                signalerOuverture={marquerCorrectionVideoVueAction.bind(null, contexte)}
               />
             </section>
           )}
@@ -209,16 +250,16 @@ export default async function ExercicePage({ params }: ExercicePageProps) {
                     seul, changer d'avis écrit une ligne de plus et c'est la plus
                     récente qui vaut. */}
                 <div className="flex flex-wrap gap-3">
-                  <form action={autoEvaluerAction}>
+                  <form method="post" action={urlEtape}>
                     {champsContexte}
-                    <input type="hidden" name="resultat" value="reussi" />
+                    <input type="hidden" name="etape" value="reussi" />
                     <Button type="submit" className="min-h-11">
                       {ELEVE_FR.exercice.reussi}
                     </Button>
                   </form>
-                  <form action={autoEvaluerAction}>
+                  <form method="post" action={urlEtape}>
                     {champsContexte}
-                    <input type="hidden" name="resultat" value="a_refaire" />
+                    <input type="hidden" name="etape" value="a_refaire" />
                     <Button type="submit" variant="outline" className="min-h-11">
                       {ELEVE_FR.exercice.aRefaire}
                     </Button>

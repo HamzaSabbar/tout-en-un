@@ -132,6 +132,19 @@ export async function nettoyerDonneesE2E(): Promise<void> {
       ],
     },
   });
+  // Le journal d'apprentissage part avant les exercices et les utilisateurs qu'il
+  // référence. Il est supprimé sur les deux critères : les événements d'un compte
+  // de test, et ceux qui visent une matière de test, pour qu'un compte réel ayant
+  // touché une fixture ne laisse pas de ligne orpheline.
+  await prisma.evenementApprentissage.deleteMany({
+    where: {
+      OR: [
+        { utilisateur_id: { in: utilisateurIds } },
+        { matiere_id: { in: matiereIds } },
+      ],
+    },
+  });
+  await prisma.exercice.deleteMany({ where: { cours_id: { in: coursIds } } });
   await prisma.video.deleteMany({ where: { cours_id: { in: coursIds } } });
   await prisma.cours.deleteMany({ where: { id: { in: coursIds } } });
   await prisma.chapitre.deleteMany({ where: { id: { in: chapitreIds } } });
@@ -163,10 +176,19 @@ export async function nettoyerDonneesE2E(): Promise<void> {
 
 // Compte ce qui reste : sert au test qui vérifie que le nettoyage ne laisse rien.
 // `fichier` et `document` en font partie depuis qu'un scénario téléverse par le
-// back-office : sans eux, une ligne de fichier oubliée passait inaperçue.
+// back-office : sans eux, une ligne de fichier oubliée passait inaperçue. Les
+// exercices et le journal d'apprentissage s'y ajoutent au lot 4, pour la même
+// raison : un compteur qui ignore une table donne une fausse assurance.
 export async function compterResiduE2E(): Promise<number> {
   const commencePar = { startsWith: PREFIXE_E2E };
-  const [utilisateurs, filieres, matieres, offres, fichiers, documents] =
+  // `evenement_apprentissage.matiere_id` n'est pas une clé étrangère : le journal
+  // est un registre de faits, il survit volontairement au contenu qu'il cite. Il
+  // n'y a donc pas de relation à parcourir, il faut les identifiants.
+  const matiereIdsE2E = (
+    await prisma.matiere.findMany({ where: { code: commencePar }, select: { id: true } })
+  ).map((matiere) => matiere.id);
+
+  const [utilisateurs, filieres, matieres, offres, fichiers, documents, exercices, evenements] =
     await Promise.all([
       prisma.utilisateur.count({
         where: { email: { startsWith: PREFIXE_E2E.toLowerCase() } },
@@ -176,6 +198,12 @@ export async function compterResiduE2E(): Promise<number> {
       prisma.offre.count({ where: { libelle: commencePar } }),
       prisma.fichier.count({ where: { nom: commencePar } }),
       prisma.document.count({ where: { titre: commencePar } }),
+      prisma.exercice.count({ where: { titre: commencePar } }),
+      prisma.evenementApprentissage.count({
+        where: { matiere_id: { in: matiereIdsE2E } },
+      }),
     ]);
-  return utilisateurs + filieres + matieres + offres + fichiers + documents;
+  return (
+    utilisateurs + filieres + matieres + offres + fichiers + documents + exercices + evenements
+  );
 }

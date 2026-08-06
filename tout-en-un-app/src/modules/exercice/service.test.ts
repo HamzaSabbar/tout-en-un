@@ -82,6 +82,33 @@ describe("creerExercice", () => {
     expect(createExercice).not.toHaveBeenCalled();
   });
 
+  // Un champ de formulaire vide arrive en chaîne vide, pas en `undefined`.
+  // Sans traitement, un exercice sans vidéo de correction était refusé avec pour
+  // seul retour « Formulaire invalide » — c'est ce que la recette de bout en bout
+  // a mis au jour.
+  it("accepte les champs facultatifs laissés vides par le formulaire", async () => {
+    createExercice.mockResolvedValue({ id: BigInt(7) });
+
+    const resultat = await creerExercice({
+      cours_id: "1",
+      titre: "Exercice 1",
+      enonce: ENONCE,
+      aide: "",
+      correction_texte: "",
+      correction_video_ref: "",
+      difficulte: "",
+      ordre: "",
+    });
+
+    expect(resultat).toEqual({ succes: true, id: "7" });
+    const donnees = createExercice.mock.calls[0][0].data;
+    expect(donnees.correction_video_ref).toBeUndefined();
+    // Les valeurs par défaut jouent, au lieu d'échouer sur un 0 issu de la
+    // conversion de la chaîne vide.
+    expect(donnees.difficulte).toBe(3);
+    expect(donnees.ordre).toBe(0);
+  });
+
   it("refuse une URL complète comme référence de vidéo de correction", async () => {
     const resultat = await creerExercice({
       cours_id: "1",

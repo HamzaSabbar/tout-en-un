@@ -10,6 +10,20 @@ import {
   type DocumentRiche,
 } from "@/modules/exercice/document-riche";
 
+// Un champ de formulaire laissé vide n'arrive pas en `undefined` mais en chaîne
+// vide : `.optional()` seul ne le traite donc pas comme absent, et la validation
+// échoue sur un champ que le professeur avait le droit de ne pas remplir. C'est
+// exactement ce qui rendait impossible la création d'un exercice sans vidéo de
+// correction, avec pour seul retour « Formulaire invalide ». La chaîne vide est
+// ramenée à `undefined` avant validation, ce qui laisse jouer `.optional()` et les
+// valeurs par défaut.
+function absentSiVide<T extends z.ZodTypeAny>(schema: T) {
+  return z.preprocess(
+    (valeur) => (typeof valeur === "string" && valeur.trim() === "" ? undefined : valeur),
+    schema,
+  );
+}
+
 export const creerExerciceSchema = z.object({
   cours_id: z.coerce.bigint(),
   titre: z.string().trim().min(1).max(150),
@@ -18,15 +32,17 @@ export const creerExerciceSchema = z.object({
   correction_texte: champDocumentRicheSchema.optional(),
   // Même règle que `video.video_ref` : une référence neutre, jamais une URL,
   // pour pouvoir changer d'hébergeur vidéo sans migration.
-  correction_video_ref: z
-    .string()
-    .trim()
-    .regex(/^[A-Za-z0-9_-]{6,64}$/)
-    .optional(),
+  correction_video_ref: absentSiVide(
+    z
+      .string()
+      .trim()
+      .regex(/^[A-Za-z0-9_-]{6,64}$/)
+      .optional(),
+  ),
   // La borne est aussi une contrainte CHECK en base. Ici elle sert à répondre
   // « formulaire invalide » plutôt qu'à laisser PostgreSQL lever.
-  difficulte: z.coerce.number().int().min(1).max(5).default(3),
-  ordre: z.coerce.number().int().min(0).default(0),
+  difficulte: absentSiVide(z.coerce.number().int().min(1).max(5).default(3)),
+  ordre: absentSiVide(z.coerce.number().int().min(0).default(0)),
 });
 export type CreerExerciceInput = z.infer<typeof creerExerciceSchema>;
 

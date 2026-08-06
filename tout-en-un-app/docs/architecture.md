@@ -287,7 +287,34 @@ reponse_courte, avec_image.
 | `progression_matiere` | utilisateur_id, matiere_id, pourcentage, derniere_note, maj_le | alimente le tableau de bord élève |
 
 `ressource_type` = video, exercice, extrait, examen, test.
-`action` = vue, terminee, reussi, a_refaire, test_valide.
+`action` = vue, terminee, aide_ouverte, correction_vue, reussi, a_refaire,
+test_valide.
+
+`aide_ouverte` et `correction_vue` ont été ajoutées au lot 4. La section 9 exige
+de savoir qu'« un exercice dont l'aide est ouverte par 80 pour cent des élèves est
+mal calibré » : aucune des cinq valeurs d'origine ne portait cette information, et
+la mesure aurait dû se déduire d'autre chose ou être inventée ailleurs.
+
+Le journal est créé au lot 4, alors que la roadmap le liste sous le lot 7 : le
+critère de sortie du lot 4 exige qu'une étape franchie laisse une ligne, et une
+règle non négociable interdit d'écrire une progression autrement que par un
+événement. Le lot 4 y écrit des **faits** ; les trois tables d'agrégat et la table
+`parametre` restent au lot 7.
+
+Deux conséquences de l'immuabilité, tenues par le code du lot 4 :
+
+- **Ajout seul, sans exception.** Aucune déduplication, aucun `upsert`. Une étape
+  franchie deux fois écrit deux lignes, et la statistique utile
+  (`COUNT(DISTINCT utilisateur_id)`) reste juste, ce qu'un écrasement lui ôterait.
+  Une auto-évaluation revue laisse donc `a_refaire` et `reussi` côte à côte : la
+  plus récente vaut, `id` départageant deux lignes de même horodatage.
+- **Aucun état d'avancement stocké ailleurs.** L'étape atteinte se dérive du
+  journal à la lecture. Rien ne peut donc le contredire, contrairement à une
+  colonne d'avancement qu'il faudrait tenir à jour.
+
+`matiere_id`, `chapitre_id` et `cours_id` ne sont pas des clés étrangères,
+contrairement à `utilisateur_id` : un registre de faits doit survivre au contenu
+qu'il cite, y compris à sa suppression logique.
 
 ### 5.6 Plan de travail
 
@@ -333,7 +360,15 @@ correction_incomprise, erreur_suspectee, autre.
 - Index sur `(cours_id, statut, ordre)` pour `video`, `exercice` et
   `extrait_national` : affichage d'un cours en une seule passe.
 - Index sur `evenement_apprentissage (utilisateur_id, cree_le)` pour les vues
-  d'activité.
+  d'activité, plus `(ressource_type, ressource_id, action)` ajouté au lot 4 : c'est
+  le chemin de la statistique pédagogique de la section 9, « quelle proportion
+  d'élèves ouvre l'aide de cet exercice », et celui de la dérivation de l'étape
+  atteinte par un élève sur une ressource.
+- Contrainte `CHECK` sur `exercice.difficulte`, bornée à l'intervalle 1..5, et sur
+  `evenement_apprentissage.duree_secondes`, jamais négative. Elles sont écrites à
+  la main dans la migration : le langage de schéma de Prisma ne les exprime pas, et
+  il ignore celles qu'il trouve en base, donc elles ne sont pas prises pour une
+  dérive.
 - Index partiel sur `question_support` filtré sur le statut en attente, pour la
   file admin.
 - Unicité sur `examen_national (matiere_id, annee, session)`.
@@ -511,6 +546,24 @@ formules LaTeX, images et listes. Ce choix rend le contenu interrogeable,
 réutilisable, et affichable proprement à toute largeur d'écran : c'est le rendu
 qui s'adapte, pas le contenu qui est saisi deux fois.
 
+Décisions du lot 4, qui donnent leur forme exacte à ce modèle :
+
+- **Jeu de types de nœuds fermé** : `paragraphe`, `liste`, `formule`, `image`,
+  `code`. Aucun nœud ne porte de HTML. Les objets sont validés en `strict` à
+  l'écriture, donc une clé inconnue fait échouer la sauvegarde. C'est la forme que
+  prend « nettoyage du contenu riche » de la section 15 : le danger est rendu
+  impossible en entrée plutôt que retiré en sortie, un assainisseur ne traitant
+  que le symptôme d'un modèle trop permissif.
+- **Formules en ligne dans le texte, entre dollars**, en plus du nœud `formule`
+  centré en bloc. Sans elles, « la vitesse $v$ vaut » serait impossible à écrire
+  et chaque symbole occuperait sa propre ligne. Un dollar non apparié reste du
+  texte : un énoncé qui mentionne un prix ne doit pas être refusé.
+- **Une image ne porte qu'un `fichier_id`**, jamais une URL ni une clé de
+  stockage (invariant 3), et cet identifiant est stocké en chaîne de chiffres, la
+  seule des trois formes possibles qui traverse JSON sans rien perdre.
+- **Le rendu produit des éléments React**, jamais une chaîne HTML : tout traverse
+  donc l'échappement de React. La seule exception est la sortie de KaTeX.
+
 Le parcours élève suit une progression à étapes, chaque étape franchie étant
 journalisée :
 
@@ -522,12 +575,76 @@ journalisée :
 
 La journalisation fournit une information pédagogique exploitable : un exercice
 dont l'aide est ouverte par 80 pour cent des élèves est mal calibré ou mal énoncé.
+Les actions correspondantes sont `vue`, `aide_ouverte`, `correction_vue`,
+`terminee` pour la correction vidéo, puis `reussi` ou `a_refaire` (section 5.5).
+L'étape 4 n'existe que si une correction vidéo existe.
+
+**L'aide et la correction ne sont pas masquées, elles ne sont pas envoyées.** Le
+service ne les renvoie pas avant leur étape : elles sont absentes du HTML comme de
+la charge RSC. C'est le raisonnement de l'invariant 4 sur les bonnes réponses d'un
+test, appliqué aux exercices — ce qui n'est pas encore dû à l'élève ne quitte pas
+le serveur. Masquer en CSS ou envoyer puis cacher côté client laisserait la
+réponse lisible.
+
+**Le franchissement passe par une route d'API, pas par une action serveur**, et
+c'est un choix contre l'habitude du reste du projet, où les formulaires du
+back-office sont bien des actions serveur. Deux raisons, toutes deux payées au
+prix fort pendant la recette du lot 4 :
+
+- Les deux étapes passives — ouvrir l'exercice, demander la correction vidéo —
+  sont déclenchées depuis un composant client, donc à un moment que personne ne
+  contrôle. La réponse d'une action serveur embarque toujours un nouveau rendu de
+  la page courante ; une de ces réponses arrivant après celle d'un franchissement
+  réappliquait un arbre calculé **avant** ce franchissement, et l'aide qui venait
+  d'être révélée disparaissait de l'écran.
+- Les trois étapes actives ont montré un défaut plus tenace. La réponse de
+  l'action contenait bien le rendu à jour — vérifié dans la trace réseau — mais le
+  routeur client ne l'appliquait pas de façon fiable dès lors que la page avait
+  été atteinte par un lien depuis la page de cours, c'est-à-dire par le chemin
+  normal. L'écran restait figé, parfois vide. Interrogée directement, la même URL
+  rendait pourtant 200 avec la page complète : le serveur n'a jamais été en cause.
+  **En arrivant par une URL saisie à la main, tout fonctionnait**, ce qui a
+  longtemps donné l'illusion que la fonctionnalité tenait.
+
+Un formulaire HTML qui poste vers une route est une navigation de document
+ordinaire, suivie d'une redirection 303 que le navigateur suit. Ce vieux
+POST-redirection-GET est déterministe, fonctionne sans JavaScript, et ne dépend
+d'aucun état de cache côté client. Le prix est un rechargement complet de la page,
+acceptable pour trois clics par exercice. L'adresse de destination nomme l'étape
+franchie, ce qui permet aussi de l'annoncer à un lecteur d'écran.
+
+Les deux étapes passives passent par la même route, en JSON et sans redirection.
+Elles sont signalées depuis le client et non pendant le rendu, parce que Next
+précharge les pages au survol d'un lien : un enregistrement fait pendant le rendu
+compterait des consultations qui n'ont pas eu lieu. Le marqueur ne se déclenche
+qu'à l'arrivée sur l'exercice, jamais après un franchissement, sinon une seule
+séance écrirait autant de `vue` que d'étapes.
 
 ### Formules scientifiques
 
 Saisie en LaTeX dans le back-office avec prévisualisation en direct, rendu par
 KaTeX côté serveur pour la performance et l'indexation. Support des unités et
 notations de physique et chimie, et des schémas en image.
+
+Le navigateur de l'élève ne reçoit que du HTML déjà mis en forme et la feuille de
+style KaTeX ; **aucun JavaScript KaTeX ne lui est envoyé**, ce qui est la seule
+façon d'ajouter le LaTeX sans entamer les 200 Ko par page élève (section 16). La
+promesse est tenue mécaniquement : le composant de rendu est marqué `server-only`,
+donc l'importer depuis un composant client fait échouer la compilation au lieu de
+faire grossir le bundle en silence. La feuille de style est importée par ce
+composant, si bien que seules les routes qui rendent une formule en paient le
+poids.
+
+KaTeX est appelé sans `trust`, ce qui désactive `\href`, `\url`,
+`\includegraphics` et `\htmlClass`, soit toutes les commandes capables d'émettre du
+balisage arbitraire, et sans `throwOnError`, pour qu'une faute de frappe du
+professeur rende une formule en rouge au lieu de faire tomber la page.
+
+La prévisualisation du back-office est nécessairement cliente. Elle charge KaTeX en
+différé, au premier clic, et ne rejoue pas le rendu complet — ce serait une
+deuxième implémentation du même affichage, donc deux vérités. Elle traite les deux
+seules choses qui échouent à la saisie : le document est-il valide, et chaque
+formule se compile-t-elle.
 
 ### Déroulement d'un test
 

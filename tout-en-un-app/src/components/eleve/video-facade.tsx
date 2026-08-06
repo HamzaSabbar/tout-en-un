@@ -17,10 +17,10 @@ interface VideoFacadeProps {
   // lecteur ne doit apparaître qu'après le clic.
   cle: string;
   titre: string;
-  // Action serveur facultative, appelée au clic. Sert au parcours d'exercice, où
-  // demander la correction vidéo est une étape franchie qui doit laisser une
-  // ligne dans le journal d'apprentissage.
-  signalerOuverture?: () => Promise<void>;
+  // Appelé au clic, s'il est fourni. Sert au parcours d'exercice, où demander la
+  // correction vidéo est une étape franchie qui doit laisser une ligne dans le
+  // journal d'apprentissage.
+  signalerOuverture?: () => void;
 }
 
 interface LecteurProps {
@@ -44,7 +44,7 @@ export function VideoFacade({
     setErreur(undefined);
     // Enregistrement au plus tôt et sans attente : perdre le fait ne doit pas
     // empêcher la lecture, et l'attendre retarderait l'affichage du lecteur.
-    void signalerOuverture?.().catch(() => undefined);
+    signalerOuverture?.();
     try {
       const [reponse, moduleLecteur] = await Promise.all([
         fetch(urlLecture),

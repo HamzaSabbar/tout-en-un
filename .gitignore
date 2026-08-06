@@ -23,3 +23,7 @@ dist/
 *.log
 npm-debug.log*
 .vscode/
+
+# Réglages Claude Code personnels, jamais partagés
+.claude/settings.local.json
+.claude/scheduled_tasks.lock

@@ -137,15 +137,14 @@ la route locale autorise par capacité signée plutôt qu'en rappelant
 
 Signalés pour ne pas être perdus, volontairement non corrigés ici.
 
-- **Terminal cible révisé après la clôture.** Le lot 3 a été conçu et vérifié
-  sous l'hypothèse mobile-first : la recette valide 375 px, et les pages élève
-  sont contenues dans une colonne de 768 px (`max-w-3xl`). L'ordinateur à grand
-  écran est désormais le terminal dominant (architecture section 2). Les pages
-  fonctionnent sur grand écran mais n'en exploitent pas la largeur, et aucune
-  recette ne couvre ce cas. À traiter comme un chantier propre, pas comme une
-  retouche : mises en page larges, et vérification Playwright à un viewport de
-  bureau. Le plafond de 200 Ko reste mesuré et bloquant, c'est lui qui garantit
-  que le téléphone reste utilisable pendant cet enrichissement.
+- ~~**Terminal cible révisé après la clôture.**~~ **Soldé au lot 4.** Le lot 3
+  avait été conçu et vérifié sous l'hypothèse mobile-first : recette à 375 px,
+  pages élève contenues dans une colonne de 768 px (`max-w-3xl`), alors que
+  l'ordinateur à grand écran est le terminal dominant (architecture section 2). La
+  coquille élève passe à 1152 px, les listes deviennent des grilles, la fiche
+  d'exercice passe à deux colonnes, et `e2e/lot4-exercices.spec.ts` valide les deux
+  viewports. Traité dans le lot 4 plutôt qu'à part : refaire les mises en page puis
+  les refaire pour accueillir les exercices aurait été le même travail deux fois.
 
 - La table `document` n'a pas de colonne `cree_le` : la migration
   `20260731181043_ajoute_cree_le_contenu` a couvert `chapitre`, `cours`,

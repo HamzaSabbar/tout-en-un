@@ -12,12 +12,18 @@ const compat = new FlatCompat({
 const eslintConfig = [
   ...compat.extends("next/core-web-vitals", "next/typescript"),
   {
+    // La configuration à plat d'ESLint ne lit pas `.gitignore` : tout ce qui est
+    // engendré doit être répété ici. Le rapport Playwright embarque du
+    // JavaScript minifié, et sans cette ligne une exécution locale de la recette
+    // faisait remonter des milliers de faux problèmes qui noyaient les vrais.
     ignores: [
       "node_modules/**",
       ".next/**",
       ".next-budget/**",
       "out/**",
       "build/**",
+      "playwright-report/**",
+      "test-results/**",
       "next-env.d.ts",
       "src/generated/**",
     ],

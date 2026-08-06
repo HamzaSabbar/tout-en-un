@@ -122,7 +122,16 @@ export default async function CoursPage({ params }: CoursPageProps) {
                           {ELEVE_FR.exercice.difficulte} {exercice.difficulte}/5
                         </p>
                       </div>
+                      {/* `prefetch={false}` : la fiche d'exercice dépend de ce
+                          que cet élève a déjà franchi, elle n'est donc ni
+                          partageable ni réutilisable d'une visite à l'autre. La
+                          précharger ne fait pas gagner de temps utile, et
+                          l'entrée ainsi mise en cache par le routeur survivait
+                          au franchissement d'une étape : l'événement était
+                          écrit, la réponse du serveur était juste, et l'écran
+                          restait figé sur l'état précédent. */}
                       <Link
+                        prefetch={false}
                         href={`/matieres/${matiereId}/chapitres/${chapitreId}/cours/${coursId}/exercices/${exercice.id}`}
                         className={buttonVariants({ className: "min-h-11" })}
                       >

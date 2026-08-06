@@ -58,6 +58,8 @@ export const ELEVE_FR = {
     autoEvaluationConsigne: "Réponds franchement : c'est ce qui décidera de tes révisions.",
     reussi: "J'ai réussi",
     aRefaire: "À refaire",
+    annonceAide: "Aide affichée.",
+    annonceCorrection: "Correction affichée.",
     reponseReussi: "Noté comme réussi. Tu peux changer d'avis plus tard.",
     reponseARefaire: "Noté comme à refaire. Cet exercice te sera reproposé.",
     etapeVerrouillee: "Étape suivante",
