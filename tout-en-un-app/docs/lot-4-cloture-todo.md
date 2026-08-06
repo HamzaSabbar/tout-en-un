@@ -169,21 +169,22 @@ porte trois, dans le style des examens nationaux, sur trois parties distinctes d
 programme (ondes, dipôle RC, cinétique chimique). Les 76 formules qu'ils
 contiennent compilent toutes sous KaTeX.
 
-L'exercice a payé : il manque **deux types de nœuds** au modèle, et aucun test
+L'exercice a payé : il manquait **deux types de nœuds** au modèle, et aucun test
 unitaire ne pouvait le dire, puisqu'ils testent ce que le modèle sait faire.
 
 1. **Aucun tableau.** Un suivi temporel donne un tableau de mesures, et une
    étude de réaction un tableau d'avancement : ce sont des figures imposées du
-   programme, pas des cas limites. Faute de mieux, le tableau de mesures est
-   aujourd'hui un nœud `code`. Le rendu est acceptable — police à chasse fixe,
-   colonnes alignées — mais la sémantique est fausse : un lecteur d'écran annonce
-   du code, et la mise en forme ne s'adapte pas à la largeur. Il faut un nœud
-   `tableau` avec en-têtes et lignes.
-2. **Aucune emphase.** Écrire `**le réactif limitant**` par réflexe affiche les
-   astérisques telles quelles. Le professeur le rencontrera à son premier
-   exercice. Une emphase en ligne, dans la même grammaire que les formules entre
-   dollars, réglerait le cas sans ouvrir la porte au HTML.
+   programme, pas des cas limites. Faute de mieux, le tableau de mesures était
+   un nœud `code`. Le rendu était acceptable — police à chasse fixe, colonnes
+   alignées — mais la sémantique était fausse : un lecteur d'écran annonçait du
+   code, et la mise en forme ne s'adaptait pas à la largeur.
+2. **Aucune emphase.** Écrire `**le réactif limitant**` par réflexe affichait les
+   astérisques telles quelles.
 
-Aucun des deux n'est corrigé ici : ce sont des évolutions du modèle de contenu,
-donc du schéma, du rendu et de la documentation. Elles méritent leur propre
-décision plutôt qu'un ajout discret en fin de lot.
+**Les deux sont corrigés**, sur la branche `exercices-physique-chimie` (voir
+`docs/plan-tableau-et-emphase.md` pour le détail de la conception et de la mise
+en œuvre) : nœud `tableau` avec en-têtes obligatoires et cellules pouvant être
+vides, et emphase en ligne dans la même grammaire que les formules entre
+dollars, rendue en `<strong>`. Le troisième exercice utilise désormais un vrai
+nœud `tableau` pour son tableau de mesures et son tableau d'avancement, et
+l'emphase dans sa correction.

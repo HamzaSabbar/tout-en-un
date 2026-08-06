@@ -210,9 +210,19 @@ const EXERCICES: ExerciceSeme[] = [
             "On suit la réaction en mesurant le volume $V(\\mathrm{H_2})$ de dihydrogène dégagé, dans les conditions où le volume molaire vaut $V_m = 24{,}0 \\ \\mathrm{L \\cdot mol^{-1}}$. On donne $M(\\mathrm{Zn}) = 65{,}4 \\ \\mathrm{g \\cdot mol^{-1}}$.",
         },
         {
-          type: "code",
-          texte:
-            "  t (min)      0     2     4     6     8    10    15    20\n  V(H2) (mL)   0    18    32    43    51    57    65    68",
+          type: "tableau",
+          entetes: ["$t$ (min)", "0", "2", "4", "6", "8", "10", "15", "20"],
+          lignes: [["$V(\\mathrm{H_2})$ (mL)", "0", "18", "32", "43", "51", "57", "65", "68"]],
+          legende: "Volume de dihydrogène dégagé au cours du temps.",
+        },
+        {
+          type: "tableau",
+          legende: "Tableau d'avancement de la réaction (avancement en mol). Compléter l'état final.",
+          entetes: ["État du système", "Avancement", "$\\mathrm{Zn}_{(s)}$", "$\\mathrm{H_3O^+}_{(aq)}$", "$\\mathrm{Zn^{2+}}_{(aq)}$", "$\\mathrm{H_2}_{(g)}$"],
+          lignes: [
+            ["État initial", "0", "$n_i(\\mathrm{Zn})$", "$n_i(\\mathrm{H_3O^+})$", "0", "0"],
+            ["État final", "", "", "", "", ""],
+          ],
         },
         { type: "liste", ordonnee: true, elements: [
           "Calculer les quantités de matière initiales de zinc et d'ions oxonium, puis déterminer le réactif limitant.",
@@ -254,17 +264,26 @@ const EXERCICES: ExerciceSeme[] = [
         {
           type: "paragraphe",
           texte:
-            "On compare $\\dfrac{3{,}1 \\times 10^{-3}}{1} = 3{,}1 \\times 10^{-3}$ et $\\dfrac{1{,}0 \\times 10^{-2}}{2} = 5{,}0 \\times 10^{-3}$. Le premier rapport est le plus petit, donc le zinc est le réactif limitant, et $x_{max} = 3{,}1 \\times 10^{-3} \\ \\mathrm{mol}$.",
+            "On compare $\\dfrac{3{,}1 \\times 10^{-3}}{1} = 3{,}1 \\times 10^{-3}$ et $\\dfrac{1{,}0 \\times 10^{-2}}{2} = 5{,}0 \\times 10^{-3}$. Le premier rapport est le plus petit, donc **le zinc est le réactif limitant**, et $x_{max} = 3{,}1 \\times 10^{-3} \\ \\mathrm{mol}$.",
         },
         {
           type: "paragraphe",
           texte:
-            "2. La stœchiométrie donne une mole de dihydrogène par mole de zinc consommé, donc $V_{max}(\\mathrm{H_2}) = x_{max} \\, V_m = 3{,}1 \\times 10^{-3} \\times 24{,}0 = 7{,}3 \\times 10^{-2} \\ \\mathrm{L} \\approx 73 \\ \\mathrm{mL}$, ce que confirment les mesures qui plafonnent vers 70 mL.",
+            "2. La stœchiométrie donne une mole de dihydrogène par mole de zinc consommé, donc $V_{max}(\\mathrm{H_2}) = x_{max} \\, V_m = 3{,}1 \\times 10^{-3} \\times 24{,}0 = 7{,}3 \\times 10^{-2} \\ \\mathrm{L} \\approx 73 \\ \\mathrm{mL}$, ce que confirment les mesures qui plafonnent vers 70 mL. Le tableau d'avancement se complète donc ainsi :",
+        },
+        {
+          type: "tableau",
+          legende: "Tableau d'avancement complété.",
+          entetes: ["État du système", "Avancement", "$\\mathrm{Zn}_{(s)}$", "$\\mathrm{H_3O^+}_{(aq)}$", "$\\mathrm{Zn^{2+}}_{(aq)}$", "$\\mathrm{H_2}_{(g)}$"],
+          lignes: [
+            ["État initial", "0", "$n_i(\\mathrm{Zn})$", "$n_i(\\mathrm{H_3O^+})$", "0", "0"],
+            ["État final", "$x_{max}$", "0", "$n_i(\\mathrm{H_3O^+}) - 2x_{max}$", "$x_{max}$", "$x_{max}$"],
+          ],
         },
         {
           type: "paragraphe",
           texte:
-            "3. La vitesse volumique de réaction est proportionnelle à la pente de la tangente à la courbe $x(t)$. Cette pente est nettement plus forte à $t = 2 \\ \\mathrm{min}$ qu'à $t = 15 \\ \\mathrm{min}$ : la vitesse diminue au cours du temps, parce que les concentrations des réactifs diminuent.",
+            "3. La vitesse volumique de réaction est proportionnelle à la pente de la tangente à la courbe $x(t)$. Cette pente est nettement plus forte à $t = 2 \\ \\mathrm{min}$ qu'à $t = 15 \\ \\mathrm{min}$ : **la vitesse diminue** au cours du temps, parce que les concentrations des réactifs diminuent.",
         },
         {
           type: "paragraphe",

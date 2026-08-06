@@ -65,9 +65,10 @@ export function decouperFormulesEnLigne(texte: string): FragmentTexte[] {
   };
 
   while (i < texte.length) {
-    // `\$` est un dollar littéral, la seule séquence d'échappement du modèle.
-    if (texte[i] === "\\" && texte[i + 1] === "$") {
-      tampon += "$";
+    // `\$` et `\*` sont les deux seules séquences d'échappement du modèle : un
+    // dollar ou une astérisque littérale.
+    if (texte[i] === "\\" && (texte[i + 1] === "$" || texte[i + 1] === "*")) {
+      tampon += texte[i + 1];
       i += 2;
       continue;
     }
@@ -93,6 +94,92 @@ export function decouperFormulesEnLigne(texte: string): FragmentTexte[] {
 
   viderTampon();
   return fragments;
+}
+
+// Emphase en ligne, même grammaire que les formules entre dollars : une paire
+// non appariée ou vide reste du texte, `\*` rend une astérisque littérale. Une
+// seule forme, le gras — l'italique n'a pas d'usage propre ici, les grandeurs et
+// variables relèvent des formules, où le rendu mathématique les met déjà en
+// italique.
+//
+// Le découpage se fait en deux temps : les segments d'emphase d'abord, puis les
+// fragments de formule à l'intérieur de chacun. L'inverse serait faux, une
+// formule est opaque et ce qu'elle contient n'ouvre pas d'emphase.
+export interface SegmentTexte {
+  emphase: boolean;
+  fragments: FragmentTexte[];
+}
+
+const MARQUEUR_EMPHASE = "**";
+
+// Cherche la fermeture en sautant les échappements ET les portions entre
+// dollars : sans cela, `**` à l'intérieur d'une formule couperait la formule.
+function trouverFermetureEmphase(texte: string, debut: number): number {
+  let i = debut;
+  while (i < texte.length) {
+    if (texte[i] === "\\") {
+      i += 2;
+      continue;
+    }
+    if (texte[i] === "$") {
+      const fin = trouverDollarFermant(texte, i + 1);
+      i = fin === -1 ? i + 1 : fin + 1;
+      continue;
+    }
+    if (texte.startsWith(MARQUEUR_EMPHASE, i)) return i;
+    i += 1;
+  }
+  return -1;
+}
+
+export function decouperTexteRiche(texte: string): SegmentTexte[] {
+  const segments: SegmentTexte[] = [];
+  let tampon = "";
+  let i = 0;
+
+  const viderTampon = () => {
+    if (tampon !== "") segments.push({ emphase: false, fragments: decouperFormulesEnLigne(tampon) });
+    tampon = "";
+  };
+
+  while (i < texte.length) {
+    // Une séquence d'échappement traverse ce découpage sans être interprétée :
+    // c'est `decouperFormulesEnLigne`, appelé plus bas sur chaque segment, qui
+    // rend le caractère littéral.
+    if (texte[i] === "\\") {
+      tampon += texte.slice(i, i + 2);
+      i += 2;
+      continue;
+    }
+    if (texte[i] === "$") {
+      const fin = trouverDollarFermant(texte, i + 1);
+      const fermeture = fin === -1 ? i + 1 : fin + 1;
+      tampon += texte.slice(i, fermeture);
+      i = fermeture;
+      continue;
+    }
+    if (!texte.startsWith(MARQUEUR_EMPHASE, i)) {
+      tampon += texte[i];
+      i += 1;
+      continue;
+    }
+
+    const fin = trouverFermetureEmphase(texte, i + 2);
+    const interieur = fin === -1 ? "" : texte.slice(i + 2, fin);
+    if (fin === -1 || interieur === "") {
+      // Marqueur non apparié, ou paire vide : reste du texte.
+      tampon += MARQUEUR_EMPHASE;
+      i += 2;
+      continue;
+    }
+
+    viderTampon();
+    segments.push({ emphase: true, fragments: decouperFormulesEnLigne(interieur) });
+    i = fin + 2;
+  }
+
+  viderTampon();
+  return segments;
 }
 
 // Une formule en ligne est soumise au même plafond qu'une formule en bloc :
@@ -162,12 +249,42 @@ const codeSchema = z
   })
   .strict();
 
+// Sans `min(1)`, contrairement à `texteSchema` : un tableau d'avancement a des
+// cellules vides par nature (état initial ou final d'une espèce non concernée).
+const celluleSchema = z
+  .string()
+  .max(LONGUEUR_MAX_TEXTE)
+  .refine(
+    (valeur) =>
+      decouperFormulesEnLigne(valeur).every(
+        (fragment) => fragment.type === "texte" || fragment.valeur.length <= LONGUEUR_MAX_FORMULE,
+      ),
+    { message: `Une formule en ligne dépasse ${LONGUEUR_MAX_FORMULE} caractères.` },
+  );
+
+// Pas de `.refine()` ni `.superRefine()` ici : cela ferait de ce schéma un
+// `ZodEffects`, que l'union discriminée juste en dessous refuse d'accepter comme
+// membre. La régularité des lignes (autant de cellules que d'en-têtes) se
+// contrôle donc plus bas, au niveau du document entier.
+const tableauSchema = z
+  .object({
+    type: z.literal("tableau"),
+    entetes: z.array(celluleSchema).min(1).max(COLONNES_MAX_TABLEAU),
+    lignes: z
+      .array(z.array(celluleSchema).min(1).max(COLONNES_MAX_TABLEAU))
+      .min(1)
+      .max(LIGNES_MAX_TABLEAU),
+    legende: z.string().trim().max(300).optional(),
+  })
+  .strict();
+
 const noeudSchema = z.discriminatedUnion("type", [
   paragrapheSchema,
   listeSchema,
   formuleSchema,
   imageSchema,
   codeSchema,
+  tableauSchema,
 ]);
 
 // Le document est une liste plate. Aucune imbrication, donc aucune profondeur à
@@ -178,7 +295,23 @@ export const documentRicheSchema = z
     version: z.literal(1),
     noeuds: z.array(noeudSchema).min(1).max(NOEUDS_MAX_DOCUMENT),
   })
-  .strict();
+  .strict()
+  // Un tableau irrégulier se rend de travers : mieux vaut refuser l'écriture
+  // qu'afficher des colonnes décalées à l'élève.
+  .superRefine((document, ctx) => {
+    document.noeuds.forEach((noeud, indexNoeud) => {
+      if (noeud.type !== "tableau") return;
+      noeud.lignes.forEach((ligne, indexLigne) => {
+        if (ligne.length !== noeud.entetes.length) {
+          ctx.addIssue({
+            code: "custom",
+            message: "Chaque ligne d'un tableau doit avoir autant de cellules que d'en-têtes.",
+            path: ["noeuds", indexNoeud, "lignes", indexLigne],
+          });
+        }
+      });
+    });
+  });
 
 export type NoeudRiche = z.infer<typeof noeudSchema>;
 export type DocumentRiche = z.infer<typeof documentRicheSchema>;

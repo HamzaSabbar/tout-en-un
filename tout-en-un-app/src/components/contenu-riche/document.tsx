@@ -3,7 +3,7 @@ import { Fragment } from "react";
 import { Formule } from "@/components/contenu-riche/formule";
 import { ImageExercice } from "@/components/contenu-riche/image-exercice";
 import {
-  decouperFormulesEnLigne,
+  decouperTexteRiche,
   type DocumentRiche,
   type NoeudRiche,
 } from "@/modules/exercice/document-riche";
@@ -24,16 +24,22 @@ interface DocumentRicheVueProps {
 }
 
 function TexteRiche({ texte }: { texte: string }) {
-  const fragments = decouperFormulesEnLigne(texte);
   return (
     <>
-      {fragments.map((fragment, index) =>
-        fragment.type === "texte" ? (
-          <Fragment key={index}>{fragment.valeur}</Fragment>
+      {decouperTexteRiche(texte).map((segment, index) => {
+        const contenu = segment.fragments.map((fragment, rang) =>
+          fragment.type === "texte" ? (
+            <Fragment key={rang}>{fragment.valeur}</Fragment>
+          ) : (
+            <Formule key={rang} latex={fragment.valeur} />
+          ),
+        );
+        return segment.emphase ? (
+          <strong key={index}>{contenu}</strong>
         ) : (
-          <Formule key={index} latex={fragment.valeur} />
-        ),
-      )}
+          <Fragment key={index}>{contenu}</Fragment>
+        );
+      })}
     </>
   );
 }
@@ -74,6 +80,41 @@ function Noeud({ noeud, baseUrlImages }: { noeud: NoeudRiche; baseUrlImages: str
         <pre className="overflow-x-auto rounded-md border bg-muted p-3 text-sm">
           <code>{noeud.texte}</code>
         </pre>
+      );
+    case "tableau":
+      return (
+        // `overflow-x-auto` sur le conteneur, jamais sur la page : un tableau
+        // large sur téléphone doit défiler dans sa boîte, sinon la page entière
+        // déborde.
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse text-sm">
+            {noeud.legende && (
+              <caption className="caption-bottom pt-2 text-sm text-muted-foreground">
+                {noeud.legende}
+              </caption>
+            )}
+            <thead>
+              <tr>
+                {noeud.entetes.map((entete, rang) => (
+                  <th key={rang} scope="col" className="border-b px-3 py-2 text-left font-semibold">
+                    <TexteRiche texte={entete} />
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {noeud.lignes.map((ligne, rangLigne) => (
+                <tr key={rangLigne}>
+                  {ligne.map((cellule, rangCellule) => (
+                    <td key={rangCellule} className="border-b px-3 py-2 align-top">
+                      <TexteRiche texte={cellule} />
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       );
     default: {
       const jamais: never = noeud;
