@@ -13,18 +13,20 @@ function rendre(noeuds: unknown[]): string {
 }
 
 describe("DocumentRicheVue", () => {
-  it("rend les cinq types de nœuds sans erreur", () => {
+  it("rend les six types de nœuds sans erreur", () => {
     const html = rendre([
       { type: "paragraphe", texte: "Un énoncé." },
       { type: "liste", elements: ["premier", "deuxième"] },
       { type: "formule", latex: "E = mc^2", bloc: true },
       { type: "image", fichier_id: "12", alt: "Schéma", legende: "Circuit" },
       { type: "code", texte: "print(42)" },
+      { type: "tableau", entetes: ["a"], lignes: [["1"]] },
     ]);
     expect(html).toContain("Un énoncé.");
     expect(html).toContain("<li>premier</li>");
     expect(html).toContain("Circuit");
     expect(html).toContain("print(42)");
+    expect(html).toContain("<table");
   });
 
   // Le rendu KaTeX se fait sur le serveur : le balisage doit être présent dans le
@@ -82,5 +84,48 @@ describe("DocumentRicheVue", () => {
   it("rend une liste ordonnée en ol et une liste simple en ul", () => {
     expect(rendre([{ type: "liste", ordonnee: true, elements: ["a"] }])).toContain("<ol");
     expect(rendre([{ type: "liste", elements: ["a"] }])).toContain("<ul");
+  });
+
+  it("rend une emphase en <strong>", () => {
+    const html = rendre([{ type: "paragraphe", texte: "le **réactif limitant** est le zinc" }]);
+    expect(html).toContain("<strong>réactif limitant</strong>");
+  });
+
+  it("rend le <strong> et le balisage KaTeX quand l'emphase contient une formule", () => {
+    const html = rendre([{ type: "paragraphe", texte: "**la vitesse $v$**" }]);
+    expect(html).toContain("<strong>");
+    expect(html).toContain("katex");
+  });
+
+  it("échappe le texte d'une emphase au lieu de l'interpréter comme du balisage", () => {
+    const html = rendre([{ type: "paragraphe", texte: "**<script>**" }]);
+    expect(html).not.toContain("<script>");
+    expect(html).toContain("&lt;script&gt;");
+  });
+
+  it("rend un tableau avec ses en-têtes, sa légende et le bon nombre de cellules", () => {
+    const html = rendre([
+      {
+        type: "tableau",
+        entetes: ["t (min)", "Volume"],
+        lignes: [
+          ["0", "0"],
+          ["2", "18"],
+        ],
+        legende: "Mesures",
+      },
+    ]);
+    expect(html).toContain("<table");
+    expect(html).toContain('<th scope="col"');
+    expect(html).toContain("<caption");
+    expect(html).toContain("Mesures");
+    expect(html.match(/<td/g)).toHaveLength(4);
+  });
+
+  it("rend une formule dans une cellule de tableau", () => {
+    const html = rendre([
+      { type: "tableau", entetes: ["Grandeur"], lignes: [["$v = d/t$"]] },
+    ]);
+    expect(html).toContain("katex");
   });
 });

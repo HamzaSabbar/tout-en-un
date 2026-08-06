@@ -4,6 +4,7 @@ import {
   analyserDocumentRicheJson,
   champDocumentRicheSchema,
   decouperFormulesEnLigne,
+  decouperTexteRiche,
   documentRicheSchema,
   fichiersReferences,
 } from "@/modules/exercice/document-riche";
@@ -16,11 +17,17 @@ const documentComplet = {
     { type: "formule", latex: "E = mc^2", bloc: true },
     { type: "image", fichier_id: "12", alt: "Schéma du circuit", legende: "Circuit RC" },
     { type: "code", texte: "print(42)", langage: "python" },
+    {
+      type: "tableau",
+      entetes: ["$t$", "Valeur"],
+      lignes: [["0", "1"], ["1", "2"]],
+      legende: "Un tableau",
+    },
   ],
 };
 
 describe("documentRicheSchema", () => {
-  it("accepte un document contenant les cinq types de nœuds", () => {
+  it("accepte un document contenant les six types de nœuds", () => {
     const analyse = documentRicheSchema.safeParse(documentComplet);
     expect(analyse.success).toBe(true);
   });
@@ -118,6 +125,67 @@ describe("documentRicheSchema", () => {
     expect(analyse.noeuds[0]).toMatchObject({ ordonnee: false });
     expect(analyse.noeuds[1]).toMatchObject({ bloc: false });
   });
+
+  it("accepte un tableau régulier", () => {
+    const analyse = documentRicheSchema.safeParse({
+      version: 1,
+      noeuds: [{ type: "tableau", entetes: ["a", "b"], lignes: [["1", "2"]] }],
+    });
+    expect(analyse.success).toBe(true);
+  });
+
+  it("rejette une ligne plus courte que les en-têtes", () => {
+    const analyse = documentRicheSchema.safeParse({
+      version: 1,
+      noeuds: [{ type: "tableau", entetes: ["a", "b"], lignes: [["1"]] }],
+    });
+    expect(analyse.success).toBe(false);
+  });
+
+  it("rejette une ligne plus longue que les en-têtes", () => {
+    const analyse = documentRicheSchema.safeParse({
+      version: 1,
+      noeuds: [{ type: "tableau", entetes: ["a", "b"], lignes: [["1", "2", "3"]] }],
+    });
+    expect(analyse.success).toBe(false);
+  });
+
+  // Un tableau d'avancement a des cellules vides par nature (état initial ou
+  // final d'une espèce non concernée) : contrairement au texte, ce n'est pas
+  // une saisie oubliée.
+  it("accepte une cellule vide", () => {
+    const analyse = documentRicheSchema.safeParse({
+      version: 1,
+      noeuds: [{ type: "tableau", entetes: ["a", "b"], lignes: [["1", ""]] }],
+    });
+    expect(analyse.success).toBe(true);
+  });
+
+  it("rejette un tableau dépassant le nombre maximal de colonnes", () => {
+    const entetes = Array.from({ length: 13 }, (_, index) => `c${index}`);
+    const analyse = documentRicheSchema.safeParse({
+      version: 1,
+      noeuds: [{ type: "tableau", entetes, lignes: [entetes.map(() => "x")] }],
+    });
+    expect(analyse.success).toBe(false);
+  });
+
+  it("rejette un tableau dépassant le nombre maximal de lignes", () => {
+    const lignes = Array.from({ length: 61 }, () => ["x"]);
+    const analyse = documentRicheSchema.safeParse({
+      version: 1,
+      noeuds: [{ type: "tableau", entetes: ["a"], lignes }],
+    });
+    expect(analyse.success).toBe(false);
+  });
+
+  it("rejette une clé inconnue sur un nœud tableau", () => {
+    const analyse = documentRicheSchema.safeParse({
+      version: 1,
+      noeuds: [{ type: "tableau", entetes: ["a"], lignes: [["1"]], couleur: "rouge" }],
+    });
+    expect(analyse.success).toBe(false);
+  });
 });
 
 describe("decouperFormulesEnLigne", () => {
@@ -165,6 +233,64 @@ describe("decouperFormulesEnLigne", () => {
 
   it("ne produit aucun fragment pour une chaîne vide", () => {
     expect(decouperFormulesEnLigne("")).toEqual([]);
+  });
+});
+
+describe("decouperTexteRiche", () => {
+  it("sépare texte et emphase", () => {
+    expect(decouperTexteRiche("un **mot important** dans la phrase")).toEqual([
+      { emphase: false, fragments: [{ type: "texte", valeur: "un " }] },
+      { emphase: true, fragments: [{ type: "texte", valeur: "mot important" }] },
+      { emphase: false, fragments: [{ type: "texte", valeur: " dans la phrase" }] },
+    ]);
+  });
+
+  it("traite une paire non appariée comme du texte", () => {
+    expect(decouperTexteRiche("un ** deux")).toEqual([
+      { emphase: false, fragments: [{ type: "texte", valeur: "un ** deux" }] },
+    ]);
+  });
+
+  it("traite une paire vide comme du texte", () => {
+    expect(decouperTexteRiche("un **** deux")).toEqual([
+      { emphase: false, fragments: [{ type: "texte", valeur: "un **** deux" }] },
+    ]);
+  });
+
+  it("rend une astérisque échappée littérale", () => {
+    expect(decouperTexteRiche("un \\* deux")).toEqual([
+      { emphase: false, fragments: [{ type: "texte", valeur: "un * deux" }] },
+    ]);
+  });
+
+  it("donne à une emphase contenant une formule un segment à deux fragments", () => {
+    expect(decouperTexteRiche("**la vitesse $v$**")).toEqual([
+      {
+        emphase: true,
+        fragments: [
+          { type: "texte", valeur: "la vitesse " },
+          { type: "latex", valeur: "v" },
+        ],
+      },
+    ]);
+  });
+
+  // Le cas qui motive `trouverFermetureEmphase` : sans lui, le `**` dans
+  // l'exposant de la formule fermerait l'emphase avant la fin voulue.
+  it("ne laisse pas un ** à l'intérieur d'une formule fermer l'emphase", () => {
+    expect(decouperTexteRiche("**$x^{**}$ suite**")).toEqual([
+      {
+        emphase: true,
+        fragments: [
+          { type: "latex", valeur: "x^{**}" },
+          { type: "texte", valeur: " suite" },
+        ],
+      },
+    ]);
+  });
+
+  it("ne produit aucun segment pour une chaîne vide", () => {
+    expect(decouperTexteRiche("")).toEqual([]);
   });
 });
 

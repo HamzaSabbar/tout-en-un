@@ -38,7 +38,13 @@ function formulesDuDocument(json: string): string[] | null {
       continue;
     }
     const textes =
-      noeud.type === "paragraphe" ? [noeud.texte] : noeud.type === "liste" ? noeud.elements : [];
+      noeud.type === "paragraphe"
+        ? [noeud.texte]
+        : noeud.type === "liste"
+          ? noeud.elements
+          : noeud.type === "tableau"
+            ? [...noeud.entetes, ...noeud.lignes.flat()]
+            : [];
     for (const texte of textes) {
       for (const fragment of decouperFormulesEnLigne(texte)) {
         if (fragment.type === "latex") formules.push(fragment.valeur);

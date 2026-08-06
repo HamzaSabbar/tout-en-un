@@ -66,8 +66,9 @@ export function CreerExerciceForm({
               onChange={(evenement) => setEnonce(evenement.target.value)}
             />
             <p className="text-xs text-muted-foreground">
-              Types de nœuds acceptés : paragraphe, liste, formule, image, code. Les
-              formules en ligne s&apos;écrivent entre dollars. Une image porte
+              Types de nœuds acceptés : paragraphe, liste, formule, image, code,
+              tableau. Les formules en ligne s&apos;écrivent entre dollars,
+              l&apos;emphase entre doubles astérisques. Une image porte
               l&apos;identifiant du fichier téléversé, jamais une URL.
             </p>
             <ApercuContenuRiche valeur={enonce} libelle="l'énoncé" />

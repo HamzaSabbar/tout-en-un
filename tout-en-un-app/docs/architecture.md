@@ -549,15 +549,25 @@ qui s'adapte, pas le contenu qui est saisi deux fois.
 Décisions du lot 4, qui donnent leur forme exacte à ce modèle :
 
 - **Jeu de types de nœuds fermé** : `paragraphe`, `liste`, `formule`, `image`,
-  `code`. Aucun nœud ne porte de HTML. Les objets sont validés en `strict` à
-  l'écriture, donc une clé inconnue fait échouer la sauvegarde. C'est la forme que
-  prend « nettoyage du contenu riche » de la section 15 : le danger est rendu
-  impossible en entrée plutôt que retiré en sortie, un assainisseur ne traitant
-  que le symptôme d'un modèle trop permissif.
+  `code`, `tableau`. Aucun nœud ne porte de HTML. Les objets sont validés en
+  `strict` à l'écriture, donc une clé inconnue fait échouer la sauvegarde. C'est
+  la forme que prend « nettoyage du contenu riche » de la section 15 : le danger
+  est rendu impossible en entrée plutôt que retiré en sortie, un assainisseur ne
+  traitant que le symptôme d'un modèle trop permissif. Le nœud `tableau` porte
+  des `entetes` obligatoires et des `lignes` dont chaque cellule peut être vide
+  (un tableau d'avancement en comporte par nature) ; chaque ligne doit avoir
+  autant de cellules que d'en-têtes, contrôle posé au niveau du document plutôt
+  que du nœud, car un `.superRefine()` sur un membre de l'union discriminée le
+  ferait sortir de cette union.
 - **Formules en ligne dans le texte, entre dollars**, en plus du nœud `formule`
   centré en bloc. Sans elles, « la vitesse $v$ vaut » serait impossible à écrire
   et chaque symbole occuperait sa propre ligne. Un dollar non apparié reste du
   texte : un énoncé qui mentionne un prix ne doit pas être refusé.
+- **Emphase en ligne entre doubles astérisques**, une seule forme rendue en
+  `<strong>` : `**le réactif limitant**`. Même grammaire que les formules entre
+  dollars (paire non appariée ou vide laissée en texte, `\*` littéral), et le
+  découpage se fait en deux temps, l'emphase d'abord puis les formules à
+  l'intérieur de chaque segment.
 - **Une image ne porte qu'un `fichier_id`**, jamais une URL ni une clé de
   stockage (invariant 3), et cet identifiant est stocké en chaîne de chiffres, la
   seule des trois formes possibles qui traverse JSON sans rien perdre.
