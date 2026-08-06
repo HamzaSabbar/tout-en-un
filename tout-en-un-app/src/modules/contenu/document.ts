@@ -10,25 +10,77 @@ const TYPES_DOCUMENT = [
   "correction_pdf",
   "sujet_pdf",
   "support_live",
+  // Lot 4 : les images du contenu riche d'un exercice passent par cette même
+  // machinerie, donc par une URL signée. Le contenu riche ne stocke qu'un
+  // `fichier_id` (invariant 3).
+  "image_exercice",
 ] as const;
 
 const TAILLE_MAX_OCTETS = 20 * 1024 * 1024;
 
-export const televerserDocumentSchema = z.object({
-  type: z.enum(TYPES_DOCUMENT),
-  titre: z.string().trim().min(1).max(150),
-  matiere_id: z.coerce.bigint().optional(),
-  chapitre_id: z.coerce.bigint().optional(),
-  cours_id: z.coerce.bigint().optional(),
-  nom: z.string().trim().min(1).max(255),
-  type_mime: z.literal("application/pdf"),
-  taille: z.coerce.number().int().min(1).max(TAILLE_MAX_OCTETS),
-});
+// Une image d'exercice est affichée dans le fil de l'énoncé, pas ouverte à la
+// demande comme un PDF : son poids est subi par l'élève. Architecture 8 prévoit
+// une conversion WebP et deux tailles générées, hors périmètre du lot 4 ; d'ici
+// là ce plafond est la seule protection du téléphone.
+const TAILLE_MAX_IMAGE_OCTETS = 5 * 1024 * 1024;
+
+// L'extension du nom stocké est déduite du type MIME validé, jamais du nom de
+// fichier envoyé par le navigateur. La table est aussi la liste blanche : ajouter
+// un format se fait ici, et `src/lib/storage/local.ts` porte la table inverse
+// pour servir le bon `Content-Type`.
+const EXTENSION_PAR_MIME = {
+  "application/pdf": "pdf",
+  "image/png": "png",
+  "image/jpeg": "jpg",
+  "image/webp": "webp",
+} as const;
+
+type TypeMimeAccepte = keyof typeof EXTENSION_PAR_MIME;
+
+const typeMimeSchema = z.enum(
+  Object.keys(EXTENSION_PAR_MIME) as [TypeMimeAccepte, ...TypeMimeAccepte[]],
+);
+
+function estImage(typeMime: TypeMimeAccepte): boolean {
+  return typeMime !== "application/pdf";
+}
+
+// Le type de document et le type MIME doivent s'accorder. Sans ce contrôle, un
+// PDF téléversé comme `image_exercice` finirait dans une balise `img`, et une
+// image téléversée comme `cours_pdf` serait proposée à l'élève comme un PDF.
+function verifierAccordTypeEtMime(
+  donnees: { type: string; type_mime: TypeMimeAccepte; taille: number },
+  ctx: z.RefinementCtx,
+): void {
+  const image = estImage(donnees.type_mime);
+  if (donnees.type === "image_exercice" && !image) {
+    ctx.addIssue({ code: "custom", message: "Une image est attendue." });
+  }
+  if (donnees.type !== "image_exercice" && image) {
+    ctx.addIssue({ code: "custom", message: "Un PDF est attendu." });
+  }
+  if (image && donnees.taille > TAILLE_MAX_IMAGE_OCTETS) {
+    ctx.addIssue({ code: "custom", message: "Image trop lourde." });
+  }
+}
+
+export const televerserDocumentSchema = z
+  .object({
+    type: z.enum(TYPES_DOCUMENT),
+    titre: z.string().trim().min(1).max(150),
+    matiere_id: z.coerce.bigint().optional(),
+    chapitre_id: z.coerce.bigint().optional(),
+    cours_id: z.coerce.bigint().optional(),
+    nom: z.string().trim().min(1).max(255),
+    type_mime: typeMimeSchema,
+    taille: z.coerce.number().int().min(1).max(TAILLE_MAX_OCTETS),
+  })
+  .superRefine(verifierAccordTypeEtMime);
 export type TeleverserDocumentInput = z.infer<typeof televerserDocumentSchema>;
 
 export const remplacerFichierSchema = z.object({
   nom: z.string().trim().min(1).max(255),
-  type_mime: z.literal("application/pdf"),
+  type_mime: typeMimeSchema,
   taille: z.coerce.number().int().min(1).max(TAILLE_MAX_OCTETS),
 });
 export type RemplacerFichierInput = z.infer<typeof remplacerFichierSchema>;
@@ -41,12 +93,14 @@ function construireCleStockage(params: {
   chapitreId?: bigint;
   coursId?: bigint;
   type: string;
+  typeMime: TypeMimeAccepte;
 }): string {
   const segments = [params.matiereId, params.chapitreId, params.coursId]
     .filter((id): id is bigint => id !== undefined)
     .map((id) => id.toString());
   const identifiant = randomBytes(8).toString("hex");
-  return [...segments, `${params.type}-${identifiant}.pdf`].join("/");
+  const extension = EXTENSION_PAR_MIME[params.typeMime];
+  return [...segments, `${params.type}-${identifiant}.${extension}`].join("/");
 }
 
 export async function televerserDocument(
@@ -64,6 +118,7 @@ export async function televerserDocument(
     chapitreId: donnees.data.chapitre_id,
     coursId: donnees.data.cours_id,
     type: donnees.data.type,
+    typeMime: donnees.data.type_mime,
   });
 
   try {
@@ -112,6 +167,18 @@ export async function remplacerFichier(
   const fichier = await prisma.fichier.findUnique({ where: { id: fichierId } });
   if (!fichier || fichier.supprime_le) {
     return { succes: false, erreur: "Fichier introuvable." };
+  }
+
+  // Le remplacement garde la même `cle_stockage`, donc la même extension, et
+  // c'est cette extension qui détermine le `Content-Type` servi. Changer de
+  // format sans changer de clé ferait servir un PNG comme PDF. Le remplacement
+  // remplace le contenu, jamais le format.
+  if (donnees.data.type_mime !== fichier.type_mime) {
+    return { succes: false, erreur: "Le format du fichier doit rester identique." };
+  }
+
+  if (estImage(donnees.data.type_mime) && donnees.data.taille > TAILLE_MAX_IMAGE_OCTETS) {
+    return { succes: false, erreur: "Image trop lourde." };
   }
 
   try {

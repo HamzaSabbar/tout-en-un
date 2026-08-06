@@ -3,16 +3,20 @@ import Link from "next/link";
 import { obtenirCours } from "@/modules/contenu/cours";
 import { listerVideos } from "@/modules/contenu/video";
 import { listerDocumentsCours } from "@/modules/contenu/document";
+import { listerExercices } from "@/modules/exercice/service";
 import {
   depublierDocumentAction,
+  depublierExerciceAction,
   depublierVideoAction,
   publierDocumentAction,
+  publierExerciceAction,
   publierVideoAction,
 } from "@/modules/contenu/actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CreerVideoForm } from "./creer-video-form";
 import { TeleverserDocumentForm } from "./televerser-document-form";
+import { CreerExerciceForm } from "./creer-exercice-form";
 import { requirePermission } from "@/modules/acces/require-auth";
 
 export default async function CoursDetailPage({
@@ -27,9 +31,10 @@ export default async function CoursDetailPage({
     notFound();
   }
 
-  const [videos, documents] = await Promise.all([
+  const [videos, documents, exercices] = await Promise.all([
     listerVideos(cours.id),
     listerDocumentsCours(cours.id),
+    listerExercices(cours.id),
   ]);
 
   return (
@@ -105,6 +110,11 @@ export default async function CoursDetailPage({
                 <p className="font-medium">{document.titre}</p>
                 <p className="text-sm text-muted-foreground">
                   {document.type} · {document.fichier.nom}
+                  {/* L'identifiant n'est affiché que pour une image : c'est lui
+                      que le professeur recopie dans un nœud `image` du contenu
+                      riche, le contenu ne portant jamais d'URL. */}
+                  {document.type === "image_exercice" &&
+                    ` · fichier_id ${document.fichier.id.toString()}`}
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -140,6 +150,62 @@ export default async function CoursDetailPage({
           )}
         </ul>
         <TeleverserDocumentForm
+          matiereId={matiereId}
+          chapitreId={chapitreId}
+          coursId={coursId}
+        />
+      </section>
+
+      <section className="flex flex-col gap-4">
+        <h2 className="text-lg font-medium">Exercices</h2>
+        <ul className="flex flex-col gap-3">
+          {exercices.map((exercice) => (
+            <li
+              key={exercice.id.toString()}
+              className="flex items-center justify-between rounded-lg border p-4"
+            >
+              <div>
+                <p className="font-medium">{exercice.titre}</p>
+                <p className="text-sm text-muted-foreground">
+                  Difficulté {exercice.difficulte}
+                  {exercice.aide ? " · aide" : ""}
+                  {exercice.correction_texte ? " · correction écrite" : ""}
+                  {exercice.correction_video_ref ? " · correction vidéo" : ""}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Badge variant={exercice.statut === "publie" ? "default" : "secondary"}>
+                  {exercice.statut}
+                </Badge>
+                {exercice.statut === "brouillon" ? (
+                  <form action={publierExerciceAction}>
+                    <input type="hidden" name="matiere_id" value={matiereId} />
+                    <input type="hidden" name="chapitre_id" value={chapitreId} />
+                    <input type="hidden" name="cours_id" value={coursId} />
+                    <input type="hidden" name="exercice_id" value={exercice.id.toString()} />
+                    <Button type="submit" size="sm">
+                      Publier
+                    </Button>
+                  </form>
+                ) : (
+                  <form action={depublierExerciceAction}>
+                    <input type="hidden" name="matiere_id" value={matiereId} />
+                    <input type="hidden" name="chapitre_id" value={chapitreId} />
+                    <input type="hidden" name="cours_id" value={coursId} />
+                    <input type="hidden" name="exercice_id" value={exercice.id.toString()} />
+                    <Button type="submit" size="sm" variant="outline">
+                      Dépublier
+                    </Button>
+                  </form>
+                )}
+              </div>
+            </li>
+          ))}
+          {exercices.length === 0 && (
+            <p className="text-sm text-muted-foreground">Aucun exercice pour l&apos;instant.</p>
+          )}
+        </ul>
+        <CreerExerciceForm
           matiereId={matiereId}
           chapitreId={chapitreId}
           coursId={coursId}

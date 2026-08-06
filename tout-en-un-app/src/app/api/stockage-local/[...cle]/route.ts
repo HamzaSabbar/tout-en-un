@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import {
   resoudreCheminLocal,
   stockageLocalAutorise,
+  typeMimeDeCle,
   verifierSignatureLocale,
 } from "@/lib/storage/local";
 
@@ -43,7 +44,8 @@ export async function GET(request: Request, { params }: RouteParams) {
   // absente, fausse ou expirée : la route ne dit pas à un attaquant lequel de
   // ses essais approchait. Le disque n'est touché qu'après cette porte.
   const chemin = resoudreCheminLocal(cle);
-  if (chemin === null || !verifierSignatureLocale(cle, expire, signature)) {
+  const typeMime = typeMimeDeCle(cle);
+  if (chemin === null || typeMime === null || !verifierSignatureLocale(cle, expire, signature)) {
     return new NextResponse(null, { status: 403 });
   }
 
@@ -59,9 +61,12 @@ export async function GET(request: Request, { params }: RouteParams) {
   return new NextResponse(flux, {
     status: 200,
     headers: {
-      // Type figé, jamais déduit : seul le PDF peut être téléversé, et
-      // `nosniff` empêche qu'un contenu déguisé devienne exécutable.
-      "Content-Type": "application/pdf",
+      // Type pris dans une table fermée d'extensions, jamais deviné à partir
+      // des octets. L'extension a été écrite par le téléversement depuis un
+      // type MIME validé, et la clé entière est signée : le client ne choisit
+      // ni l'une ni l'autre. `nosniff` empêche en plus qu'un contenu déguisé
+      // soit réinterprété par le navigateur.
+      "Content-Type": typeMime,
       "Content-Length": infos.size.toString(),
       "Content-Disposition": "inline",
       "X-Content-Type-Options": "nosniff",

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronRight } from "lucide-react";
+import { COQUILLE_ELEVE } from "@/components/eleve/coquille";
 import { AccesRefuse } from "@/components/acces-refuse";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ELEVE_FR } from "@/lib/i18n/eleve.fr";
@@ -29,7 +30,7 @@ export default async function ChapitrePage({ params }: ChapitrePageProps) {
   if (!chapitre) notFound();
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-3xl flex-col gap-6 px-4 py-8 sm:px-6">
+    <main className={`${COQUILLE_ELEVE} flex min-h-screen flex-col gap-6 py-8`}>
       <header className="space-y-3">
         <Link href={`/matieres/${matiereId}`} className="inline-flex min-h-11 items-center text-sm font-medium hover:underline">
           {ELEVE_FR.navigation.retourMatiere}
@@ -44,7 +45,7 @@ export default async function ChapitrePage({ params }: ChapitrePageProps) {
         {chapitre.cours.length === 0 ? (
           <p className="text-muted-foreground">{ELEVE_FR.cours.vide}</p>
         ) : (
-          <ul className="space-y-3">
+          <ul className="grid gap-3 lg:grid-cols-2">
             {chapitre.cours.map((cours) => (
               <li key={cours.id.toString()}>
                 <Link

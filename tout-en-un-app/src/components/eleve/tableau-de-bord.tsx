@@ -25,7 +25,10 @@ export function TableauDeBord({ donnees }: TableauDeBordProps) {
       <h2 id="tableau-de-bord-titre" className="text-xl font-semibold">
         {ELEVE_FR.tableauDeBord.titre}
       </h2>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      {/* Les quatre cartes tiennent sur une ligne à partir de 1024 px : elles
+          sont le résumé de la matière, et un résumé qui se déroule sur quatre
+          écrans n'en est plus un. */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {CARTES.map(({ cle, titre, Icone }) => (
           <Card key={cle} data-dashboard-card={cle}>
             <CardHeader className="flex flex-row items-center gap-3 pb-2">

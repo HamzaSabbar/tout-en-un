@@ -12,6 +12,7 @@ import {
   creerAdaptateurLocal,
   resoudreCheminLocal,
   stockageLocalAutorise,
+  typeMimeDeCle,
   verifierSignatureLocale,
   viderStockageLocal,
 } from "@/lib/storage/local";
@@ -66,6 +67,12 @@ describe("validation des clés de stockage", () => {
     expect(cleValide("10/20/30/cours-e2e-1785000000.pdf")).toBe(true);
   });
 
+  it("accepte les extensions d'image du contenu riche", () => {
+    for (const extension of ["png", "jpg", "jpeg", "webp"]) {
+      expect(cleValide(`10/20/30/image_exercice-abc.${extension}`)).toBe(true);
+    }
+  });
+
   it.each([
     ["une remontée d'un niveau", "../secret.pdf"],
     ["une remontée au milieu", "10/../../secret.pdf"],
@@ -83,6 +90,31 @@ describe("validation des clés de stockage", () => {
 
   it("refuse une clé trop longue", () => {
     expect(cleValide(`${"a".repeat(250)}.pdf`)).toBe(false);
+  });
+});
+
+// C'est cette table qui décide du `Content-Type` servi par la route locale : une
+// extension inconnue doit rendre null, pas un type par défaut, sinon la route
+// servirait un contenu sous un type qu'elle n'a pas validé.
+describe("type MIME déduit de la clé", () => {
+  it.each([
+    ["10/20/30/cours_pdf-abc.pdf", "application/pdf"],
+    ["10/20/30/image_exercice-abc.png", "image/png"],
+    ["10/20/30/image_exercice-abc.jpg", "image/jpeg"],
+    ["10/20/30/image_exercice-abc.jpeg", "image/jpeg"],
+    ["10/20/30/image_exercice-abc.webp", "image/webp"],
+    ["10/20/30/image_exercice-abc.PNG", "image/png"],
+  ])("rend le type de %s", (cle, attendu) => {
+    expect(typeMimeDeCle(cle)).toBe(attendu);
+  });
+
+  it.each([
+    ["une extension inconnue", "10/20/30/script.svg"],
+    ["une extension absente", "10/20/30/cours_pdf-abc"],
+    ["un nom qui commence par un point", ".pdf"],
+    ["une clé vide", ""],
+  ])("rend null pour %s", (_libelle, cle) => {
+    expect(typeMimeDeCle(cle)).toBeNull();
   });
 });
 

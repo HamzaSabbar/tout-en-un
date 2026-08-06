@@ -124,9 +124,20 @@ export async function obtenirPageCoursPubliee(
           statut: "publie",
           supprime_le: null,
           fichier: { supprime_le: null },
+          // Une image d'exercice est un document par sa mécanique de stockage,
+          // pas par son usage : elle s'affiche dans l'énoncé, elle n'a rien à
+          // faire dans la liste des PDF à ouvrir.
+          type: { not: "image_exercice" },
         },
         orderBy: { id: "asc" },
         select: { id: true, titre: true, type: true },
+      },
+      exercices: {
+        where: { statut: "publie", supprime_le: null },
+        orderBy: [{ ordre: "asc" }, { id: "asc" }],
+        // Le contenu riche n'est pas sélectionné : la liste n'a besoin que des
+        // libellés, et les énoncés complets traverseraient le cache pour rien.
+        select: { id: true, titre: true, difficulte: true },
       },
     },
   });
@@ -146,6 +157,10 @@ export async function obtenirPageCoursPubliee(
     documents: cours.documents.map((document) => ({
       ...document,
       id: document.id.toString(),
+    })),
+    exercices: cours.exercices.map((exercice) => ({
+      ...exercice,
+      id: exercice.id.toString(),
     })),
   };
 }

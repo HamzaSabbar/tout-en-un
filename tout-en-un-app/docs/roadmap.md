@@ -164,7 +164,8 @@ usage courant et un téléphone sur réseau 4G irrégulier en usage secondaire.
       cache au téléversement, au remplacement et à la publication
 - [x] Mise en cache des pages de structure, invalidation ciblée à la publication
 - [ ] Index `(cours_id, statut, ordre)` sur `video`, `exercice`,
-      `extrait_national`
+      `extrait_national` — `video` et `exercice` sont faits, `extrait_national`
+      appartient au lot 5
 
 **Les quatre cartes du tableau de bord sont des emplacements réservés.** Elles
 sont livrées, disposées et accessibles, mais toutes rendent « Pas encore
@@ -191,10 +192,10 @@ ou de vidéo n'apparaît en clair dans le HTML. Le premier affichage utile tient
 sous 2,5 secondes en 4G et le budget de 200 Ko de JavaScript par page est
 respecté.
 
-Vérifié à 375 px de large. **La vérification à grand écran reste à écrire**, et
-les pages élève sont pour l'instant contenues dans une colonne de 768 px : c'est
-une dette ouverte par la révision du terminal cible, pas un choix (voir
-architecture section 2).
+Vérifié à 375 px de large. La dette de mise en page grand écran ouverte par la
+révision du terminal cible a été soldée au lot 4 : la coquille élève passe à
+1152 px, les listes deviennent des grilles, et la recette valide les deux
+viewports.
 
 Architecture : sections 8, 16.
 
@@ -202,28 +203,57 @@ Architecture : sections 8, 16.
 
 ## Lot 4. Exercices interactifs
 
-8 j, critique. Le premier élément de valeur qu'aucune solution sans code ne sait
-modéliser.
+10 j au lieu de 8, critique. Le premier élément de valeur qu'aucune solution sans
+code ne sait modéliser. L'écart de charge vient de l'intégration de la mise en page
+grand écran, dette du lot 3 soldée ici plutôt qu'à part : refaire les mises en page
+puis les refaire pour accueillir les exercices aurait été le même travail deux
+fois.
 
-- [ ] Contenu riche structuré (JSON de type document) pour l'énoncé, l'aide et la
+- [x] Contenu riche structuré (JSON de type document) pour l'énoncé, l'aide et la
       correction
-- [ ] Saisie LaTeX dans le back-office avec prévisualisation, rendu KaTeX côté
+- [x] Saisie LaTeX dans le back-office avec prévisualisation, rendu KaTeX côté
       serveur
-- [ ] Parcours à étapes : énoncé, aide sur demande, correction écrite, correction
+- [x] Parcours à étapes : énoncé, aide sur demande, correction écrite, correction
       vidéo, auto-évaluation
-- [ ] Journalisation de chaque étape franchie
-- [ ] Difficulté de 1 à 5, rattachement au cours
+- [x] Journalisation de chaque étape franchie
+- [x] Difficulté de 1 à 5, rattachement au cours
+- [x] Images du contenu riche téléversées par le back-office et servies par URL
+      signée, référencées par identifiant et jamais par URL
+- [x] Mise en page grand écran des pages élève, deux colonnes sur la fiche
+      d'exercice
 
 **Critère de sortie.** Le professeur crée un exercice contenant formules LaTeX et
 image, et l'élève le traite étape par étape, sur écran large comme depuis un
 téléphone. Chaque étape franchie produit une ligne dans
 `evenement_apprentissage`.
 
-Ne pas prototyper en abstrait : créer deux ou trois exercices réels de
-Physique-Chimie avant d'industrialiser la saisie. Le contenu riche est le point
-le plus sous-estimé du projet.
+Prouvé par `e2e/lot4-exercices.spec.ts`, qui passe par le back-office réel :
+téléversement de l'image par le formulaire, création puis publication de
+l'exercice par les boutons, puis franchissement des cinq étapes par un élève
+abonné, avec une requête en base après chacune. Le second scénario valide les deux
+viewports, 1440 px et 375 px. Aucun `statut: "publie"` n'est écrit directement en
+base.
 
-Architecture : sections 5.3, 9.
+**Le journal `evenement_apprentissage` est créé ici, pas au lot 7**, parce que le
+critère de sortie en dépend et qu'une règle non négociable interdit d'écrire une
+progression autrement que par un événement. Le lot 4 y écrit des faits ; les trois
+tables d'agrégat et la table `parametre` restent au lot 7. L'énumération `action`
+gagne `aide_ouverte` et `correction_vue`, sans quoi la statistique demandée par
+architecture 9 serait inexprimable ; la section 5.5 est mise à jour en conséquence.
+
+Reste à faire, signalé pour ne pas être perdu : créer deux ou trois exercices
+réels de Physique-Chimie avant d'industrialiser la saisie. Le contenu riche est le
+point le plus sous-estimé du projet, et la saisie se fait pour l'instant en JSON
+dans un champ de texte, avec prévisualisation des formules. C'est utilisable par le
+professeur mais austère ; un éditeur assisté ne se justifiera qu'une fois ces
+exercices réels écrits, quand on saura ce qui gêne vraiment.
+
+Hors périmètre, assumé : architecture 8 prévoit la conversion automatique des
+images en WebP et deux tailles générées. Cela réclame `sharp` et un pipeline de
+traitement, à inscrire au lot 11 ou à un lot médias dédié. D'ici là les images sont
+servies telles que téléversées, avec un plafond de 5 Mo.
+
+Architecture : sections 5.3, 5.5, 9.
 
 ---
 

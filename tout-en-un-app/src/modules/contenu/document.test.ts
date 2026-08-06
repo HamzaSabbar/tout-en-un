@@ -66,7 +66,7 @@ describe("televerserDocument", () => {
     expect(televerser).not.toHaveBeenCalled();
   });
 
-  it("refuse un type MIME différent de application/pdf", async () => {
+  it("refuse un type MIME hors de la liste blanche", async () => {
     const resultat = await televerserDocument(
       {
         type: "cours_pdf",
@@ -80,6 +80,86 @@ describe("televerserDocument", () => {
     );
     expect(resultat.succes).toBe(false);
     expect(televerser).not.toHaveBeenCalled();
+  });
+
+  // Le type de document et le type MIME doivent s'accorder. Sinon un PDF
+  // téléversé comme image finirait dans une balise `img`, et une image téléversée
+  // comme cours serait proposée à l'élève comme un PDF.
+  it("refuse une image déclarée comme document PDF", async () => {
+    const resultat = await televerserDocument(
+      {
+        type: "cours_pdf",
+        titre: "Cours 1",
+        nom: "schema.png",
+        type_mime: "image/png",
+        taille: 10,
+      },
+      contenu,
+      BigInt(1),
+    );
+    expect(resultat.succes).toBe(false);
+    expect(televerser).not.toHaveBeenCalled();
+  });
+
+  it("refuse un PDF déclaré comme image d'exercice", async () => {
+    const resultat = await televerserDocument(
+      {
+        type: "image_exercice",
+        titre: "Schéma",
+        nom: "cours.pdf",
+        type_mime: "application/pdf",
+        taille: 10,
+      },
+      contenu,
+      BigInt(1),
+    );
+    expect(resultat.succes).toBe(false);
+    expect(televerser).not.toHaveBeenCalled();
+  });
+
+  it("refuse une image au-delà de 5 Mo", async () => {
+    const resultat = await televerserDocument(
+      {
+        type: "image_exercice",
+        titre: "Schéma",
+        nom: "schema.png",
+        type_mime: "image/png",
+        taille: 5 * 1024 * 1024 + 1,
+      },
+      contenu,
+      BigInt(1),
+    );
+    expect(resultat.succes).toBe(false);
+    expect(televerser).not.toHaveBeenCalled();
+  });
+
+  // L'extension de la clé vient du type MIME validé, jamais du nom envoyé par le
+  // navigateur : c'est elle qui détermine le `Content-Type` servi par la route de
+  // stockage local.
+  it("nomme la clé d'une image avec l'extension de son type MIME", async () => {
+    televerser.mockResolvedValue(undefined);
+    createFichier.mockResolvedValue({ id: BigInt(11) });
+    createDocument.mockResolvedValue({ id: BigInt(21) });
+
+    const resultat = await televerserDocument(
+      {
+        type: "image_exercice",
+        titre: "Schéma du circuit",
+        matiere_id: "1",
+        chapitre_id: "2",
+        cours_id: "3",
+        nom: "schema.PNG.exe",
+        type_mime: "image/png",
+        taille: 2048,
+      },
+      contenu,
+      BigInt(1),
+    );
+
+    expect(resultat).toEqual({ succes: true, id: "21" });
+    expect(televerser.mock.calls[0][0].cle).toMatch(
+      /^1\/2\/3\/image_exercice-[0-9a-f]{16}\.png$/,
+    );
   });
 
   it("retourne une erreur normale (pas une exception) si le stockage n'est pas configuré", async () => {
@@ -169,6 +249,7 @@ describe("remplacerFichier", () => {
     findUniqueFichier.mockResolvedValue({
       id: BigInt(10),
       cle_stockage: "1/2/3/cours_pdf-abc123.pdf",
+      type_mime: "application/pdf",
       supprime_le: null,
     });
     televerser.mockRejectedValue(new Error("Stockage de fichiers non configuré : ..."));
@@ -190,6 +271,7 @@ describe("remplacerFichier", () => {
     findUniqueFichier.mockResolvedValue({
       id: BigInt(10),
       cle_stockage: "1/2/3/cours_pdf-abc123.pdf",
+      type_mime: "application/pdf",
       supprime_le: null,
     });
     televerser.mockResolvedValue(undefined);
@@ -211,6 +293,28 @@ describe("remplacerFichier", () => {
       where: { id: BigInt(10) },
       data: { nom: "nouveau.pdf", type_mime: "application/pdf", taille: 2048 },
     });
+  });
+
+  // La clé de stockage est conservée, donc son extension aussi, et c'est
+  // l'extension qui décide du `Content-Type` servi. Autoriser un changement de
+  // format ferait servir une image sous `application/pdf`.
+  it("refuse de changer le format du fichier", async () => {
+    findUniqueFichier.mockResolvedValue({
+      id: BigInt(10),
+      cle_stockage: "1/2/3/cours_pdf-abc123.pdf",
+      type_mime: "application/pdf",
+      supprime_le: null,
+    });
+
+    const resultat = await remplacerFichier(BigInt(10), contenu, {
+      nom: "schema.png",
+      type_mime: "image/png",
+      taille: 2048,
+    });
+
+    expect(resultat.succes).toBe(false);
+    expect(televerser).not.toHaveBeenCalled();
+    expect(updateFichier).not.toHaveBeenCalled();
   });
 });
 
