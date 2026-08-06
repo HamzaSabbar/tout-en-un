@@ -21,6 +21,11 @@ const LONGUEUR_MAX_TEXTE = 5_000;
 const LONGUEUR_MAX_CODE = 5_000;
 const ELEMENTS_MAX_LISTE = 50;
 const NOEUDS_MAX_DOCUMENT = 200;
+// Un tableau d'avancement fait trois ou quatre colonnes, un suivi temporel une
+// dizaine de mesures. Ces bornes laissent la place aux deux sans permettre de
+// coller une feuille de calcul entière dans un énoncé.
+const COLONNES_MAX_TABLEAU = 12;
+const LIGNES_MAX_TABLEAU = 60;
 
 // Formules en ligne dans le texte, délimitées par des dollars.
 //
