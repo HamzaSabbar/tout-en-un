@@ -11,6 +11,9 @@ on:
     paths:
       - "tout-en-un-app/**"
       - ".github/workflows/ci.yml"
+  # Permet de relancer la CI à la main quand un push ou une fusion ne l'a pas
+  # déclenchée (panne GitHub Actions, filtre de chemin qui ne matche rien).
+  workflow_dispatch: {}
 
 defaults:
   run:
