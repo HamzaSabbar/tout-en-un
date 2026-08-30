@@ -94,6 +94,11 @@ test("la déconnexion révoque la session côté serveur", async ({
   const sessionCookie = cookiesAvant.find((c) => c.name === "session");
   expect(sessionCookie).toBeDefined();
 
+  // La déconnexion vit dans le menu compte de la sidebar, pas dans un bouton
+  // du tableau de bord : on l'ouvre d'abord (le libellé « Ouvrir le menu du
+  // compte » existe aussi dans la barre mobile, masquée mais présente dans le
+  // DOM — d'où le scope sur `aside`).
+  await page.locator("aside").getByLabel("Ouvrir le menu du compte").click();
   await page.getByRole("button", { name: "Se déconnecter" }).click();
   await expect(page).toHaveURL(/\/connexion$/);
 

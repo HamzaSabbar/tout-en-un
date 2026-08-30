@@ -2,8 +2,22 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import type { Resultat } from "@/lib/resultat";
 
+// Un champ de formulaire laissé vide arrive en chaîne vide, pas en `undefined` :
+// sans ce préprocesseur, `.optional()` ne le traite pas comme absent. Même motif
+// que `src/modules/contenu/extrait-national.ts`.
+function absentSiVide<T extends z.ZodTypeAny>(schema: T) {
+  return z.preprocess(
+    (valeur) => (typeof valeur === "string" && valeur.trim() === "" ? undefined : valeur),
+    schema,
+  );
+}
+
 export const creerChapitreSchema = z.object({
   matiere_id: z.coerce.bigint(),
+  // Niveau optionnel : une matière comme Mathématiques n'a aucune partie, une
+  // matière comme Physique-Chimie regroupe ses chapitres par partie. Un
+  // chapitre garde toujours son `matiere_id` propre, avec ou sans partie.
+  partie_id: absentSiVide(z.coerce.bigint().optional()),
   libelle: z.string().trim().min(1).max(150),
   description: z.string().trim().max(2000).optional(),
   icone: z.string().trim().max(50).optional(),
@@ -43,9 +57,16 @@ export function listerChapitres(matiereId: bigint) {
 
 // Vue élève : les brouillons sont écartés dans la requête, jamais à l'affichage
 // (invariant 6). L'appelant doit avoir vérifié l'accès à la matière en amont.
+// Même garde que `obtenirPageChapitrePubliee`/`obtenirPageCoursPubliee` : une
+// partie non publiée masque ses chapitres.
 export function listerChapitresPublies(matiereId: bigint) {
   return prisma.chapitre.findMany({
-    where: { matiere_id: matiereId, supprime_le: null, statut: "publie" },
+    where: {
+      matiere_id: matiereId,
+      supprime_le: null,
+      statut: "publie",
+      OR: [{ partie_id: null }, { partie: { statut: "publie", supprime_le: null } }],
+    },
     orderBy: { ordre: "asc" },
     select: { id: true, libelle: true, description: true, ordre: true },
   });

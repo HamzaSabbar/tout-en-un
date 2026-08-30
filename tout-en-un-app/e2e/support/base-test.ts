@@ -123,6 +123,25 @@ export async function nettoyerDonneesE2E(): Promise<void> {
   });
   await prisma.offre.deleteMany({ where: { libelle: commencePar } });
 
+  // Avant les documents : `extrait_national`/`examen_national` référencent des
+  // lignes `document` (SET NULL, sans risque), mais leur propre clé étrangère
+  // vers `cours` est RESTRICT — sans cette suppression d'abord, la suppression
+  // du cours plus bas échouerait (lot 5).
+  await prisma.extraitNational.deleteMany({
+    where: {
+      OR: [
+        { matiere_id: { in: matiereIds } },
+        { chapitre_id: { in: chapitreIds } },
+        { cours_id: { in: coursIds } },
+      ],
+    },
+  });
+  await prisma.examenNational.deleteMany({
+    where: {
+      OR: [{ matiere_id: { in: matiereIds } }, { filiere: { code: commencePar } }],
+    },
+  });
+
   await prisma.document.deleteMany({
     where: {
       OR: [
@@ -170,6 +189,10 @@ export async function nettoyerDonneesE2E(): Promise<void> {
       OR: [{ matiere_id: { in: matiereIds } }, { filiere: { code: commencePar } }],
     },
   });
+  // `chapitre.partie_id` est SET NULL (aucun risque à supprimer une partie
+  // référencée), mais `partie.matiere_id` est RESTRICT : sans cette ligne, la
+  // suppression de la matière plus bas échoue si elle porte encore une partie.
+  await prisma.partie.deleteMany({ where: { matiere_id: { in: matiereIds } } });
   await prisma.matiere.deleteMany({ where: { id: { in: matiereIds } } });
   await prisma.filiere.deleteMany({ where: { code: commencePar } });
 }
@@ -188,22 +211,53 @@ export async function compterResiduE2E(): Promise<number> {
     await prisma.matiere.findMany({ where: { code: commencePar }, select: { id: true } })
   ).map((matiere) => matiere.id);
 
-  const [utilisateurs, filieres, matieres, offres, fichiers, documents, exercices, evenements] =
-    await Promise.all([
-      prisma.utilisateur.count({
-        where: { email: { startsWith: PREFIXE_E2E.toLowerCase() } },
-      }),
-      prisma.filiere.count({ where: { code: commencePar } }),
-      prisma.matiere.count({ where: { code: commencePar } }),
-      prisma.offre.count({ where: { libelle: commencePar } }),
-      prisma.fichier.count({ where: { nom: commencePar } }),
-      prisma.document.count({ where: { titre: commencePar } }),
-      prisma.exercice.count({ where: { titre: commencePar } }),
-      prisma.evenementApprentissage.count({
-        where: { matiere_id: { in: matiereIdsE2E } },
-      }),
-    ]);
+  const [
+    utilisateurs,
+    filieres,
+    matieres,
+    offres,
+    fichiers,
+    documents,
+    exercices,
+    evenements,
+    extraitsNationaux,
+    examensNationaux,
+    parties,
+  ] = await Promise.all([
+    prisma.utilisateur.count({
+      where: { email: { startsWith: PREFIXE_E2E.toLowerCase() } },
+    }),
+    prisma.filiere.count({ where: { code: commencePar } }),
+    prisma.matiere.count({ where: { code: commencePar } }),
+    prisma.offre.count({ where: { libelle: commencePar } }),
+    prisma.fichier.count({ where: { nom: commencePar } }),
+    prisma.document.count({ where: { titre: commencePar } }),
+    prisma.exercice.count({ where: { titre: commencePar } }),
+    prisma.evenementApprentissage.count({
+      where: { matiere_id: { in: matiereIdsE2E } },
+    }),
+    // Ni l'un ni l'autre ne porte de champ « titre » à préfixer : rattachés à
+    // une matière de test par construction (lot 5).
+    prisma.extraitNational.count({ where: { matiere_id: { in: matiereIdsE2E } } }),
+    prisma.examenNational.count({
+      where: { OR: [{ matiere_id: { in: matiereIdsE2E } }, { filiere: { code: commencePar } }] },
+    }),
+    // Pas de champ « libelle » préfixable de façon fiable ici non plus :
+    // rattachée à une matière de test par construction, comme les deux
+    // précédentes.
+    prisma.partie.count({ where: { matiere_id: { in: matiereIdsE2E } } }),
+  ]);
   return (
-    utilisateurs + filieres + matieres + offres + fichiers + documents + exercices + evenements
+    utilisateurs +
+    filieres +
+    matieres +
+    offres +
+    fichiers +
+    documents +
+    exercices +
+    evenements +
+    extraitsNationaux +
+    examensNationaux +
+    parties
   );
 }

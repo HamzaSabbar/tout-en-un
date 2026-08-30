@@ -236,7 +236,8 @@ expirées dans le même abonnement.
 | Table | Champs principaux | Relations |
 |---|---|---|
 | `matiere` | id, code, libelle, description, icone, couleur, statut, ordre | liée aux filières |
-| `chapitre` | id, matiere_id, libelle, description, icone, ordre, statut | appartient à `matiere` |
+| `partie` | id, matiere_id, libelle, description, icone, ordre, statut | appartient à `matiere`, regroupe des `chapitre` (optionnel) |
+| `chapitre` | id, matiere_id, partie_id, libelle, description, icone, ordre, statut | appartient à `matiere`, optionnellement à `partie` |
 | `cours` | id, chapitre_id, titre, description, ordre, statut, professeur_id, publie_le | appartient à `chapitre` |
 | `video` | id, cours_id, titre, description, duree_secondes, fournisseur, video_ref, ordre, statut | appartient à `cours` |
 | `document` | id, type, titre, matiere_id, chapitre_id, cours_id, fichier_id, statut | appartient à `cours` ou `chapitre` |
@@ -246,17 +247,22 @@ expirées dans le même abonnement.
 `statut` = brouillon, publie, partout où le champ existe.
 
 La hiérarchie filière → matière → chapitre → cours → ressource est stricte et
-matérialisée par des clés étrangères. Chaque niveau porte un champ `ordre`
-(entier) pour l'affichage et un champ `statut` pour séparer brouillon et publié :
-le professeur prépare un cours entier sans qu'aucun élève ne le voie, puis publie
-en une action.
+matérialisée par des clés étrangères. Un niveau optionnel, `partie`, peut
+s'intercaler entre `matiere` et `chapitre` quand une matière le justifie (ex.
+Physique-Chimie : Physique / Chimie) : `chapitre.partie_id` est nullable, et
+`chapitre.matiere_id` continue de pointer directement vers la matière que la
+partie soit renseignée ou non — une matière comme Mathématiques n'a aucune
+partie et garde ses chapitres directement sous elle, sans changement de
+comportement. Chaque niveau porte un champ `ordre` (entier) pour l'affichage
+et un champ `statut` pour séparer brouillon et publié : le professeur prépare
+un cours entier sans qu'aucun élève ne le voie, puis publie en une action.
 
 ### 5.3 Évaluation
 
 | Table | Champs principaux | Relations |
 |---|---|---|
 | `exercice` | id, cours_id, titre, enonce (riche, LaTeX), difficulte (1 à 5), aide, correction_texte, correction_video_ref, ordre, statut | appartient à `cours` |
-| `extrait_national` | id, matiere_id, chapitre_id, cours_id, annee, session, enonce, sujet_document_id, correction_document_id, correction_video_ref, duree_recommandee, difficulte, statut | relie un extrait au cours concerné |
+| `extrait_national` | id, matiere_id, chapitre_id, cours_id, annee, session, enonce, sujet_document_id, correction_document_id, correction_video_ref, duree_recommandee, difficulte, ordre, statut | relie un extrait au cours concerné |
 | `examen_national` | id, matiere_id, filiere_id, annee, session, sujet_document_id, correction_document_id, correction_video_ref, statut | examen complet, consultation par année |
 | `test` | id, cours_id, titre, consigne, seuil_validation, duree_minutes, statut | un test par cours au MVP |
 | `question_test` | id, test_id, type, enonce, image_fichier_id, points, explication, ordre | appartient à `test` |
@@ -266,6 +272,14 @@ en une action.
 
 `session` = normale, rattrapage. `question_test.type` = qcm, vrai_faux,
 reponse_courte, avec_image.
+
+`sujet_document_id`/`correction_document_id` (lot 5) pointent vers des lignes
+`document` créées via le même téléversement que le reste du contenu, mais dont
+`matiere_id` seul est renseigné (`chapitre_id`/`cours_id` restent `null`) :
+sinon ces PDF fuiteraient dans les listes génériques de documents d'un cours.
+La visibilité ne dépend jamais de `document.statut` (laissé à `brouillon` pour
+ces deux types), uniquement du statut de `extrait_national`/`examen_national`
+— un seul état à publier, pas deux à synchroniser.
 
 ### 5.4 Sessions en direct
 
@@ -587,48 +601,60 @@ La journalisation fournit une information pédagogique exploitable : un exercice
 dont l'aide est ouverte par 80 pour cent des élèves est mal calibré ou mal énoncé.
 Les actions correspondantes sont `vue`, `aide_ouverte`, `correction_vue`,
 `terminee` pour la correction vidéo, puis `reussi` ou `a_refaire` (section 5.5).
-L'étape 4 n'existe que si une correction vidéo existe.
+Le journal est ajout seul, sans déduplication : une étape franchie deux fois
+écrit deux lignes, et la statistique se calcule par `COUNT(DISTINCT
+utilisateur_id)`, qu'un écrasement rendrait faux. L'étape 4 n'existe que si une
+correction vidéo existe.
 
-**L'aide et la correction ne sont pas masquées, elles ne sont pas envoyées.** Le
-service ne les renvoie pas avant leur étape : elles sont absentes du HTML comme de
-la charge RSC. C'est le raisonnement de l'invariant 4 sur les bonnes réponses d'un
-test, appliqué aux exercices — ce qui n'est pas encore dû à l'élève ne quitte pas
-le serveur. Masquer en CSS ou envoyer puis cacher côté client laisserait la
-réponse lisible.
+**Tous les exercices d'un cours sont listés sur la même page**, celle du cours,
+chacun avec son énoncé et, en dessous, de petits boutons Aide / Correction /
+Auto-évaluation qui déplient leur contenu sur place, sans navigation — plutôt
+qu'une page dédiée par exercice avec une étape par écran, forme antérieure du
+lot 4. L'énoncé n'a aucune confidentialité à respecter : il est rendu côté
+serveur directement dans la page de cours, par une requête à part
+(`obtenirEnoncesExercices`, une seule pour tous les exercices du cours) tenue à
+l'écart du cache partagé de la page de cours, qui exclut délibérément le
+contenu riche pour ne pas grossir pour rien un cache commun à tous les élèves.
 
-**Le franchissement passe par une route d'API, pas par une action serveur**, et
-c'est un choix contre l'habitude du reste du projet, où les formulaires du
-back-office sont bien des actions serveur. Deux raisons, toutes deux payées au
-prix fort pendant la recette du lot 4 :
+**L'aide et la correction ne sont pas masquées, elles ne sont pas envoyées.**
+Ce qui n'est pas encore dû à l'élève ne quitte pas le serveur — même
+raisonnement que l'invariant 4 sur les bonnes réponses d'un test. Masquer en
+CSS ou envoyer puis cacher côté client laisserait la réponse lisible. Techniquement,
+les routes `/aide` et `/correction` ne composent le HTML (via `DocumentRicheVue`,
+`server-only`) qu'au moment du clic, dans la réponse de la requête déclenchée par
+ce clic ; le composant client de l'accordéon ne fait qu'insérer ce HTML déjà
+composé (`dangerouslySetInnerHTML`, même principe de confiance que la
+prévisualisation du back-office, qui injecte déjà une sortie KaTeX pré-rendue de
+cette façon). Aucun contenu riche ne transite donc par le cache de la page de
+cours, ni par un état React tenu avant le clic.
 
-- Les deux étapes passives — ouvrir l'exercice, demander la correction vidéo —
-  sont déclenchées depuis un composant client, donc à un moment que personne ne
-  contrôle. La réponse d'une action serveur embarque toujours un nouveau rendu de
-  la page courante ; une de ces réponses arrivant après celle d'un franchissement
-  réappliquait un arbre calculé **avant** ce franchissement, et l'aide qui venait
-  d'être révélée disparaissait de l'écran.
-- Les trois étapes actives ont montré un défaut plus tenace. La réponse de
-  l'action contenait bien le rendu à jour — vérifié dans la trace réseau — mais le
-  routeur client ne l'appliquait pas de façon fiable dès lors que la page avait
-  été atteinte par un lien depuis la page de cours, c'est-à-dire par le chemin
-  normal. L'écran restait figé, parfois vide. Interrogée directement, la même URL
-  rendait pourtant 200 avec la page complète : le serveur n'a jamais été en cause.
-  **En arrivant par une URL saisie à la main, tout fonctionnait**, ce qui a
-  longtemps donné l'illusion que la fonctionnalité tenait.
+**Le franchissement passe par une route d'API et par `fetch`, pas par une
+action serveur**, choix contre l'habitude du reste du projet, où les
+formulaires du back-office sont bien des actions serveur. La raison, payée au
+prix fort pendant la recette du lot 4 : une action serveur embarque toujours un
+nouveau rendu de la page courante, et une réponse arrivant après celle d'un
+autre franchissement réappliquait un arbre calculé **avant** ce franchissement,
+faisant disparaître de l'écran un état qui venait de changer. Un simple `fetch`
+suivi d'une mise à jour d'état local, comme le fait l'accordéon, n'a pas ce
+problème : rien ne pilote de nouveau rendu de la route derrière le dos du
+composant qui a fait l'appel — il n'y a d'ailleurs plus qu'une seule page à
+rendre, celle du cours, là où l'ancienne forme en avait une par exercice à
+recharger entièrement pour chaque étape.
 
-Un formulaire HTML qui poste vers une route est une navigation de document
-ordinaire, suivie d'une redirection 303 que le navigateur suit. Ce vieux
-POST-redirection-GET est déterministe, fonctionne sans JavaScript, et ne dépend
-d'aucun état de cache côté client. Le prix est un rechargement complet de la page,
-acceptable pour trois clics par exercice. L'adresse de destination nomme l'étape
-franchie, ce qui permet aussi de l'annoncer à un lecteur d'écran.
+Demander l'aide ou la correction n'est jamais idempotent au sens strict — un
+second clic après rechargement de la page réécrit une ligne, comme n'importe
+quelle autre étape — mais l'accordéon ne réémet pas de requête pour un panneau
+déjà chargé pendant la même visite : replier puis redéplier un panneau est un
+geste purement local. Un panneau ouvert une fois reste donc ouvert au clic
+suivant, plié ou déplié, sans nouvel aller-retour serveur avant un
+rechargement complet de la page.
 
-Les deux étapes passives passent par la même route, en JSON et sans redirection.
-Elles sont signalées depuis le client et non pendant le rendu, parce que Next
-précharge les pages au survol d'un lien : un enregistrement fait pendant le rendu
-compterait des consultations qui n'ont pas eu lieu. Le marqueur ne se déclenche
-qu'à l'arrivée sur l'exercice, jamais après un franchissement, sinon une seule
-séance écrirait autant de `vue` que d'étapes.
+L'énoncé (étape passive, comme l'ouverture de la correction vidéo) reste
+signalé depuis un composant client (`MarqueurEtape`) et non pendant le rendu,
+parce que Next précharge les pages au survol d'un lien : un enregistrement fait
+pendant le rendu compterait des consultations qui n'ont pas eu lieu. Le
+marqueur se déclenche au montage réel de la carte d'exercice, une fois par
+carte.
 
 ### Formules scientifiques
 

@@ -1,5 +1,5 @@
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
-import { mkdir, rename, rm, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { env } from "@/lib/env";
 import type { StorageService } from "@/lib/storage/contrat";
@@ -167,6 +167,15 @@ export function creerAdaptateurLocal(racine: () => string): StorageService {
     async genererUrlSignee(cle, dureeSecondes) {
       if (!cleValide(cle)) throw new Error("Clé de stockage invalide.");
       return construireUrlSignee(cle, dureeSecondes);
+    },
+
+    async telecharger(cle) {
+      try {
+        return await readFile(resoudreOuEchouer(cle));
+      } catch (erreur) {
+        if (erreur instanceof Error && erreur.message === "Clé de stockage invalide.") throw erreur;
+        throw new Error("Fichier introuvable.");
+      }
     },
 
     async supprimer(cle) {

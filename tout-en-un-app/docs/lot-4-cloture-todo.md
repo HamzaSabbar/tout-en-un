@@ -160,6 +160,14 @@ Signalés pour ne pas être perdus, volontairement non corrigés ici.
   la convention de pagination par curseur. Indépendant du lot 4.
 - **Le bucket privé Supabase de production n'est pas provisionné.** Inchangé
   depuis le lot 3 : tâche d'exploitation à mener avant l'ouverture commerciale.
+- **`Matiere.icone`/`.couleur` et `Chapitre.icone` existent en base et sont
+  validés côté back-office** (`src/modules/contenu/matiere.ts`, `chapitre.ts`),
+  mais aucun formulaire ne permet de les renseigner : ils sont toujours `null`
+  aujourd'hui, et la coquille élève (refonte de la page matière) ne les
+  consomme donc pas — un badge numéroté remplace l'icône par chapitre, pour ne
+  pas afficher un défaut déguisé en donnée réelle. Un futur lot back-office
+  pourra ajouter le sélecteur d'icône/couleur, ce qui rendra ces champs enfin
+  vivants.
 
 ### Ce que trois exercices réels ont appris au modèle de contenu
 
@@ -188,3 +196,16 @@ vides, et emphase en ligne dans la même grammaire que les formules entre
 dollars, rendue en `<strong>`. Le troisième exercice utilise désormais un vrai
 nœud `tableau` pour son tableau de mesures et son tableau d'avancement, et
 l'emphase dans sa correction.
+
+### La fiche d'exercice à part est devenue une liste en accordéon
+
+Le lot 4 avait livré une page dédiée par exercice, avec cinq étapes rechargeant
+la page à chaque franchissement (POST-redirection-GET, voir architecture 9).
+Jugée trop austère, elle est remplacée par une liste sur la page de cours,
+chaque exercice affichant son énoncé et de petits boutons Aide / Correction /
+Auto-évaluation qui déplient leur contenu en place, sans navigation — l'aide et
+la correction restent composées et envoyées seulement au clic, jamais avant,
+par deux nouvelles routes (`/aide`, `/correction`) qui journalisent l'étape et
+rendent le contenu dans la même réponse. La page dédiée
+(`.../exercices/[exerciceId]/`) est supprimée ; architecture 9 décrit le
+nouveau mécanisme en détail.

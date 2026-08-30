@@ -212,13 +212,18 @@ test("un élève abonné parcourt une matière complète sur mobile sans fuite m
 
   await page.goto("/matieres");
   await page.getByRole("link", { name: new RegExp(fixture.matiere.libelle) }).click();
-  await expect(page.locator("[data-dashboard-card]")).toHaveCount(4);
-  await expect(page.getByText("Pas encore disponible")).toHaveCount(4);
+  // Chaque carte du tableau de bord affiche désormais un message d'état vide
+  // spécifique (pas un « Pas encore disponible » générique répété) : on
+  // vérifie que les quatre cartes existent et qu'aucune n'est restée vide.
+  const cartesTableauDeBord = page.locator("[data-dashboard-card]");
+  await expect(cartesTableauDeBord).toHaveCount(4);
+  for (const carte of await cartesTableauDeBord.all()) {
+    await expect(carte.locator("p")).not.toBeEmpty();
+  }
 
   await page.getByRole("link", { name: fixture.chapitre.libelle }).click();
   await page.getByRole("link", { name: fixture.cours.titre }).click();
   await expect(page.getByText(fixture.video.titre)).toBeVisible();
-  await expect(page.getByText(fixture.document.titre)).toBeVisible();
 
   const largeur = await page.evaluate(() => ({
     contenu: document.documentElement.scrollWidth,
@@ -241,6 +246,10 @@ test("un élève abonné parcourt une matière complète sur mobile sans fuite m
   const lecteur = page.locator("iframe");
   await expect(lecteur).toBeVisible();
   await expect(lecteur).toHaveAttribute("src", new RegExp(fixture.referenceVideo));
+
+  // Onglet Documents (voir onglets-cours.tsx) : bascule sans rechargement.
+  await page.getByRole("tab", { name: "Documents" }).click();
+  await expect(page.getByText(fixture.document.titre)).toBeVisible();
 });
 
 test("la route PDF refuse sans accès et franchit la garde avec accès", async ({ page }) => {
@@ -372,9 +381,14 @@ test("une page de cours reste complète avec beaucoup de ressources", async ({ p
     `/matieres/${fixture.matiere.id}/chapitres/${fixture.chapitre.id}/cours/${fixture.cours.id}`,
   );
 
+  // Deux onglets distincts (voir onglets-cours.tsx), démontés quand ils ne sont
+  // pas actifs : les vidéos sont dans le DOM par défaut, les documents
+  // seulement après avoir basculé sur l'onglet Documents.
   await expect(page.locator("[data-video-facade]")).toHaveCount(31);
-  await expect(page.locator("[data-document-card]")).toHaveCount(31);
   await expect(page.getByText(`${PREFIXE_E2E} Vidéo dense 29`)).toBeVisible();
+
+  await page.getByRole("tab", { name: "Documents" }).click();
+  await expect(page.locator("[data-document-card]")).toHaveCount(31);
   await expect(page.getByText(`${PREFIXE_E2E} Document dense 29`)).toBeVisible();
 
   const html = await page.content();

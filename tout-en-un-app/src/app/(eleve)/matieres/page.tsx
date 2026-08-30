@@ -1,8 +1,10 @@
 import Link from "next/link";
-import { BookOpen, ChevronRight } from "lucide-react";
+import { BookOpen, ChevronRight, GraduationCap, UserPlus } from "lucide-react";
 import { COQUILLE_ELEVE } from "@/components/eleve/coquille";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ELEVE_FR } from "@/lib/i18n/eleve.fr";
+import { accorder } from "@/lib/pluriel";
 import { requireAuth } from "@/modules/acces/require-auth";
 import { listerMatieresPourEleve } from "@/modules/parcours-eleve/service";
 
@@ -11,10 +13,28 @@ export default async function MatieresPage() {
   const matieres = await listerMatieresPourEleve(BigInt(utilisateur.id));
 
   return (
-    <main className={`${COQUILLE_ELEVE} flex min-h-screen flex-col gap-6 py-8`}>
-      <header className="space-y-2">
-        <h1 className="text-3xl font-bold tracking-tight">{ELEVE_FR.matieres.titre}</h1>
-        <p className="text-base text-muted-foreground">{ELEVE_FR.matieres.description}</p>
+    <div className={`${COQUILLE_ELEVE} flex min-h-screen flex-col gap-8 py-8`}>
+      <header className="relative overflow-hidden rounded-2xl bg-secondary p-6 sm:p-8">
+        <GraduationCap
+          aria-hidden="true"
+          className="pointer-events-none absolute -right-6 -top-6 size-40 text-primary/10"
+        />
+        <div className="relative flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div className="space-y-2">
+            <h1 className="text-h1 font-bold tracking-tight text-secondary-foreground">
+              {ELEVE_FR.matieres.titre}
+            </h1>
+            <p className="max-w-2xl text-body text-secondary-foreground/80">
+              {ELEVE_FR.matieres.description}
+            </p>
+          </div>
+          <Link href="/demande-acces" className="shrink-0">
+            <Button type="button" variant="secondary" className="h-11 gap-2 bg-card">
+              <UserPlus aria-hidden="true" className="size-4" />
+              {ELEVE_FR.coquille.demanderAcces}
+            </Button>
+          </Link>
+        </div>
       </header>
 
       {matieres.length === 0 ? (
@@ -22,31 +42,35 @@ export default async function MatieresPage() {
       ) : (
         <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {matieres.map((matiere) => (
-            <li key={matiere.id.toString()}>
+            <li key={matiere.id}>
               <Link
                 href={`/matieres/${matiere.id}`}
                 aria-label={`${ELEVE_FR.matieres.ouvrir} : ${matiere.libelle}`}
                 className="block min-h-11 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
-                <Card className="h-full transition-colors hover:bg-muted/50">
+                <Card className="h-full transition-all hover:-translate-y-0.5 hover:shadow-md">
                   <CardHeader className="flex flex-row items-center gap-3">
-                    <span className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-muted">
+                    <span className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-secondary text-secondary-foreground">
                       <BookOpen aria-hidden="true" className="size-5" />
                     </span>
                     <CardTitle className="flex-1 text-lg">{matiere.libelle}</CardTitle>
                     <ChevronRight aria-hidden="true" className="size-5 text-muted-foreground" />
                   </CardHeader>
-                  {matiere.description && (
-                    <CardContent className="text-sm text-muted-foreground">
-                      {matiere.description}
-                    </CardContent>
-                  )}
+                  <CardContent className="flex flex-wrap items-center gap-2">
+                    {matiere.description && (
+                      <p className="w-full text-body-sm text-muted-foreground">{matiere.description}</p>
+                    )}
+                    <span className="rounded-full bg-muted px-2.5 py-1 text-body-sm text-muted-foreground">
+                      {matiere.nbChapitres}{" "}
+                      {accorder(matiere.nbChapitres, ELEVE_FR.matieres.nbChapitre, ELEVE_FR.matieres.nbChapitres)}
+                    </span>
+                  </CardContent>
                 </Card>
               </Link>
             </li>
           ))}
         </ul>
       )}
-    </main>
+    </div>
   );
 }

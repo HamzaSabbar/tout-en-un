@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Lock } from "lucide-react";
 import type { MotifAcces } from "@/modules/acces/acces-matiere";
 import { buttonVariants } from "@/components/ui/button";
 import {
@@ -38,15 +39,18 @@ export function AccesRefuse({ motif }: { motif: Exclude<MotifAcces, "ok"> }) {
   const ecran = ECRANS[motif];
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-8">
+    <div className="flex min-h-[70vh] items-center justify-center p-8">
       <Card className="w-full max-w-md" data-motif={motif}>
-        <CardHeader>
-          <CardTitle>{ecran.titre}</CardTitle>
-          <CardDescription>{ecran.description}</CardDescription>
+        <CardHeader className="items-center text-center">
+          <span className="mb-2 flex size-12 items-center justify-center rounded-full bg-secondary text-secondary-foreground">
+            <Lock aria-hidden="true" className="size-5" />
+          </span>
+          <CardTitle className="text-h3">{ecran.titre}</CardTitle>
+          <CardDescription className="text-body-sm">{ecran.description}</CardDescription>
         </CardHeader>
         {ecran.lien && (
-          <CardContent>
-            <Link href={ecran.lien.href} className={buttonVariants()}>
+          <CardContent className="flex justify-center">
+            <Link href={ecran.lien.href} className={buttonVariants({ className: "h-11" })}>
               {ecran.lien.libelle}
             </Link>
           </CardContent>

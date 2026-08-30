@@ -13,6 +13,7 @@
     "budget:js": "node scripts/verifier-budget-js-eleve.mjs",
     "seed:admin": "node prisma/seed-admin.ts",
     "seed:exercices": "node scripts/seed-exercices-pc.ts",
+    "seed:contenu": "node scripts/seed-contenu-demo.ts",
     "inventaire": "node scripts/inventaire-dev.ts",
     "menage:test": "node scripts/menage-donnees-test.ts",
     "postinstall": "prisma generate"
@@ -29,6 +30,7 @@
     "katex": "^0.18.1",
     "lucide-react": "^1.27.0",
     "next": "15.5.22",
+    "pdf-lib": "^1.17.1",
     "pg": "^8.22.0",
     "react": "19.1.0",
     "react-dom": "19.1.0",

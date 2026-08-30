@@ -9,6 +9,11 @@ import { nettoyerDonneesE2E, PREFIXE_E2E } from "./support/base-test";
 // depuis un téléphone. Chaque étape franchie produit une ligne dans
 // `evenement_apprentissage`. »
 //
+// Les exercices sont listés sur la page de cours, chacun avec son énoncé et de
+// petits boutons Aide / Correction / Auto-évaluation qui déplient leur contenu
+// en place — plus de page dédiée par exercice, plus de navigation entre les
+// étapes (voir architecture 9 pour le détail du mécanisme).
+//
 // Tout passe par le vrai back-office : téléversement de l'image par le
 // formulaire, création de l'exercice par le formulaire, publication par le
 // bouton. Rien n'est écrit directement en base côté exercice — c'est la leçon du
@@ -31,6 +36,12 @@ const REFERENCE_VIDEO = "e2eVideo01";
 // que l'assertion d'absence ait un sens.
 const TEMOIN_AIDE = "IndiceReserveALEtapeAide";
 const TEMOIN_CORRECTION = "ResultatReserveALEtapeCorrection";
+
+// Chaque clic Aide/Correction/Auto-évaluation est un aller-retour réseau suivi
+// d'une mise à jour d'état local, pas un rechargement de page : plus rapide que
+// l'ancien POST-redirection-GET, mais toujours mesuré en secondes sur une
+// machine à court de mémoire (voir docs/architecture.md, section 16).
+const DELAI_ETAPE = { timeout: 30_000 };
 
 test.afterEach(nettoyerDonneesE2E);
 
@@ -184,21 +195,13 @@ async function actionsJournalisees(matiereId: bigint, exerciceId: bigint) {
   return (await evenements(matiereId, exerciceId)).map((ligne) => ligne.action);
 }
 
-test("un exercice créé au back-office est traité étape par étape par l'élève", async ({
+test("un exercice créé au back-office est traité étape par étape sur la page de cours", async ({
   page,
 }) => {
-  // Deux téléversements par formulaire, six connexions, cinq franchissements
-  // d'étape et autant de rendus serveur : le budget de 60 s par défaut est très
-  // loin du compte. Écrit pour le build de production, celui que lance
-  // l'intégration continue.
-  //
-  // Les franchissements portent en plus un délai explicite : chacun est une
-  // redirection suivie d'un rendu serveur, et sur une machine à court de mémoire
-  // ce cycle a été mesuré à plusieurs secondes. Le délai par défaut de 15 s
-  // faisait alors échouer la recette à un endroit variable, ce qui ressemblait à
-  // un défaut alors que c'était une attente trop courte.
+  // Deux téléversements par formulaire, six connexions et cinq franchissements
+  // d'étape, chacun un aller-retour réseau : le budget de 60 s par défaut est
+  // très loin du compte sur une machine à court de mémoire.
   test.setTimeout(300_000);
-  const DELAI_ETAPE = { timeout: 45_000 };
 
   const suffixe = Date.now();
   const fixture = await seedStructure(suffixe);
@@ -262,7 +265,8 @@ test("un exercice créé au back-office est traité étape par étape par l'él�
   // l'invalidation ciblée.
   await connecter(page, fixture.emailEleve);
   await page.goto(routeCoursEleve);
-  await expect(page.getByText("Aucun exercice publié pour ce cours.")).toBeVisible();
+  await page.getByRole("tab", { name: "Exercices" }).click();
+  await expect(page.getByText("Aucun exercice pour cette leçon.")).toBeVisible();
   await expect(page.getByText(titreExercice)).toHaveCount(0);
 
   // 3. L'admin publie par le bouton.
@@ -276,15 +280,20 @@ test("un exercice créé au back-office est traité étape par étape par l'él�
     select: { id: true },
   });
 
-  // 4. L'exercice apparaît immédiatement chez l'élève : sans invalidation du
-  // cache à la publication, la page resterait vide une heure.
+  // 4. L'exercice apparaît immédiatement chez l'élève, énoncé compris : sans
+  // invalidation du cache à la publication, la page resterait vide une heure.
   await connecter(page, fixture.emailEleve);
   await page.goto(routeCoursEleve);
-  await expect(page.getByText(titreExercice)).toBeVisible();
-  await page.getByRole("link", { name: "Traiter l'exercice" }).click();
-  await expect(page.locator(`[data-exercice="${exercice.id}"]`)).toBeVisible();
+  // Les exercices vivent dans l'onglet Exercices (voir onglets-cours.tsx),
+  // démonté et non simplement masqué tant qu'il n'est pas actif — le
+  // `MarqueurEtape` de l'étape 5 ci-dessous ne doit se déclencher qu'une fois
+  // l'exercice réellement affiché, pas au premier chargement de la page.
+  await page.getByRole("tab", { name: "Exercices" }).click();
+  const carte = page.locator(`[data-exercice-card="${exercice.id}"]`);
+  await expect(carte).toBeVisible();
+  await expect(carte.getByText("Un mobile tombe")).toBeVisible();
 
-  // 5. Étape 1 franchie du seul fait de l'affichage.
+  // 5. Étape 1 franchie du seul fait de l'affichage de la carte.
   await expect
     .poll(() => actionsJournalisees(fixture.matiere.id, exercice.id), { timeout: 20_000 })
     .toContain("vue");
@@ -296,22 +305,22 @@ test("un exercice créé au back-office est traité étape par étape par l'él�
   expect(premier.chapitre_id).toBe(fixture.chapitre.id);
   expect(premier.cours_id).toBe(fixture.cours.id);
 
-  // 6. La formule est rendue par le serveur, et aucun JavaScript KaTeX n'est
-  // demandé.
-  const htmlExercice = await page.content();
-  expect(htmlExercice).toContain("katex");
-  expect(htmlExercice).toContain("<math");
+  // 6. La formule de l'énoncé est rendue par le serveur, et aucun JavaScript
+  // KaTeX n'est demandé.
+  const htmlPage = await page.content();
+  expect(htmlPage).toContain("katex");
+  expect(htmlPage).toContain("<math");
   expect(scriptsKatex, "aucun JavaScript KaTeX ne doit être chargé").toEqual([]);
 
   // 7. Ni l'aide ni la correction n'ont quitté le serveur : elles sont absentes du
-  // HTML **et** de la charge RSC, pas seulement masquées.
-  const urlExercice = new URL(page.url()).pathname;
-  const rscAvant = await page.request.get(urlExercice, {
+  // HTML **et** de la charge RSC de la page de cours, pas seulement masquées.
+  const urlCours = new URL(page.url()).pathname;
+  const rscAvant = await page.request.get(urlCours, {
     headers: { Accept: "text/x-component", RSC: "1" },
   });
   const corpsRscAvant = await rscAvant.text();
   for (const [source, corps] of [
-    ["HTML", htmlExercice],
+    ["HTML", htmlPage],
     ["RSC", corpsRscAvant],
   ] as const) {
     expect(corps, `${source} livre l'aide avant son étape`).not.toContain(TEMOIN_AIDE);
@@ -325,7 +334,7 @@ test("un exercice créé au back-office est traité étape par étape par l'él�
 
   // 8. L'image passe par une route de notre API et par une URL signée. Aucune clé
   // de stockage n'apparaît dans le corps des réponses.
-  const image = page.getByAltText("Schéma de la chute");
+  const image = carte.getByAltText("Schéma de la chute");
   const source = await image.getAttribute("src");
   expect(source).toBe(
     `/api/matieres/${fixture.matiere.id}/exercices/${exercice.id}/images/${fichierId}`,
@@ -337,7 +346,7 @@ test("un exercice créé au back-office est traité étape par étape par l'él�
       select: { cle_stockage: true },
     })
   ).cle_stockage;
-  expect(htmlExercice).not.toContain(cleStockage);
+  expect(htmlPage).not.toContain(cleStockage);
   expect(corpsRscAvant).not.toContain(cleStockage);
 
   const redirection = await page.request.get(source!, { maxRedirects: 0 });
@@ -349,49 +358,41 @@ test("un exercice créé au back-office est traité étape par étape par l'él�
   expect(octets.headers()["content-type"]).toBe("image/png");
   expect((await octets.body()).equals(PNG)).toBe(true);
 
-  // 9. Étape 2 : l'aide sur demande.
-  // Franchir une étape redirige vers une adresse qui nomme l'étape : attendre
-  // cette adresse, plutôt que d'observer le contenu tout de suite, synchronise
-  // l'assertion sur le mécanisme réel au lieu de courir contre lui.
-  await page.getByRole("button", { name: "J'ai besoin d'un coup de main" }).click();
-  await page.waitForURL(/etape=aide$/, DELAI_ETAPE);
-  await expect(page.getByText(TEMOIN_AIDE)).toBeVisible(DELAI_ETAPE);
+  // 9. Étape 2 : l'aide sur demande, dépliée en place dans la carte.
+  await carte.getByRole("button", { name: "Aide", exact: true }).click();
+  await expect(carte.getByText(TEMOIN_AIDE)).toBeVisible(DELAI_ETAPE);
   expect(await actionsJournalisees(fixture.matiere.id, exercice.id)).toContain("aide_ouverte");
   // La correction, elle, n'est toujours pas partie.
   expect(await page.content()).not.toContain(TEMOIN_CORRECTION);
 
-  // 10. Étape 3 : la correction écrite.
-  await page.getByRole("button", { name: "Voir la correction" }).click();
-  await page.waitForURL(/etape=correction$/, DELAI_ETAPE);
-  await expect(page.getByText(TEMOIN_CORRECTION)).toBeVisible(DELAI_ETAPE);
+  // 10. Étape 3 : la correction écrite, dépliée à son tour.
+  await carte.getByRole("button", { name: "Correction", exact: true }).click();
+  await expect(carte.getByText(TEMOIN_CORRECTION)).toBeVisible(DELAI_ETAPE);
   expect(await actionsJournalisees(fixture.matiere.id, exercice.id)).toContain("correction_vue");
 
   // 11. Étape 4 : la correction vidéo, qui n'apparaît qu'après la correction
   // écrite. Le lecteur ne se charge qu'au clic.
-  const bloc = page.locator('[data-etape="correction-video"]');
-  await expect(bloc).toBeVisible(DELAI_ETAPE);
-  await expect(page.locator("iframe")).toHaveCount(0);
-  await bloc.getByRole("button", { name: "Regarder" }).click();
-  await expect(page.locator("iframe")).toHaveCount(1);
+  const blocVideo = carte.locator('[data-etape="correction-video"]');
+  await expect(blocVideo).toBeVisible(DELAI_ETAPE);
+  await expect(carte.locator("iframe")).toHaveCount(0);
+  await blocVideo.getByRole("button", { name: "Regarder" }).click();
+  await expect(carte.locator("iframe")).toHaveCount(1);
   await expect
     .poll(() => actionsJournalisees(fixture.matiere.id, exercice.id), { timeout: 20_000 })
     .toContain("terminee");
 
   // 12. Étape 5 : l'auto-évaluation. Le journal étant ajout seul, changer d'avis
   // ajoute une ligne et c'est la plus récente qui vaut.
-  // Assertions portées par la région d'auto-évaluation : la région d'annonce
-  // pour lecteur d'écran peut porter un texte proche, et une correspondance sur
-  // la page entière dépendrait alors de l'ordre de rendu.
-  const bilan = page.locator('[data-etape="auto-evaluation"]');
-  await page.getByRole("button", { name: "À refaire" }).click();
-  await page.waitForURL(/etape=a_refaire$/, DELAI_ETAPE);
-  await expect(bilan.getByText("Noté comme à refaire.", { exact: false })).toBeVisible(DELAI_ETAPE);
+  const bilan = carte.locator('[data-etape="auto-evaluation"]');
+  await bilan.getByRole("button", { name: "À refaire" }).click();
+  await expect(bilan.getByText("Noté comme à refaire.", { exact: false })).toBeVisible(
+    DELAI_ETAPE,
+  );
 
   // Le fait d'abord, l'affichage ensuite : c'est la ligne en base qui porte le
   // critère de sortie, et distinguer les deux dit tout de suite si un échec
   // vient de l'écriture ou du rendu.
-  await page.getByRole("button", { name: "J'ai réussi" }).click();
-  await page.waitForURL(/etape=reussi$/, DELAI_ETAPE);
+  await bilan.getByRole("button", { name: "J'ai réussi" }).click();
   await expect
     .poll(() => actionsJournalisees(fixture.matiere.id, exercice.id), { timeout: 20_000 })
     .toContain("reussi");
@@ -408,18 +409,17 @@ test("un exercice créé au back-office est traité étape par étape par l'él�
   }
 });
 
-test("la fiche d'exercice exploite le grand écran et reste utilisable à 375 px", async ({
+test("la liste d'exercices reste utilisable à 375 px, sans script KaTeX ni fuite avant clic", async ({
   page,
 }) => {
-  test.setTimeout(180_000);
+  test.setTimeout(120_000);
 
   const suffixe = Date.now();
   const fixture = await seedStructure(suffixe);
   const titreExercice = `${PREFIXE_E2E} Largeur ${suffixe}`;
   const routeCoursAdmin = `/contenu/${fixture.matiere.id}/chapitres/${fixture.chapitre.id}/cours/${fixture.cours.id}`;
+  const routeCoursEleve = `/matieres/${fixture.matiere.id}/chapitres/${fixture.chapitre.id}/cours/${fixture.cours.id}`;
 
-  // Création puis publication par le back-office, comme le premier scénario : la
-  // mise en page se vérifie sur un exercice réellement publié.
   await connecter(page, fixture.emailAdmin);
   await page.goto(routeCoursAdmin);
   const formulaireExercice = page.locator("form", {
@@ -445,50 +445,31 @@ test("la fiche d'exercice exploite le grand écran et reste utilisable à 375 px
     where: { titre: titreExercice },
     select: { id: true },
   });
-  const routeExercice = `/matieres/${fixture.matiere.id}/chapitres/${fixture.chapitre.id}/cours/${fixture.cours.id}/exercices/${exercice.id}`;
 
   await connecter(page, fixture.emailEleve);
-
-  // Écran de bureau : deux colonnes réellement côte à côte, et la largeur
-  // disponible réellement occupée.
-  await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto(routeExercice);
-  const enonce = page.locator('[data-etape="enonce"]');
-  const etapes = page.locator('[data-etape="correction"]');
-  // `boundingBox()` rend null tant que l'élément n'est pas rendu et visible :
-  // attendre les deux avant de mesurer, sinon la mesure dépend de la vitesse de
-  // la machine.
-  await expect(enonce).toBeVisible();
-  await expect(etapes).toBeVisible();
-
-  const boiteEnonce = (await enonce.boundingBox())!;
-  const boiteEtapes = (await etapes.boundingBox())!;
-  expect(
-    boiteEtapes.x,
-    "la correction doit être à droite de l'énoncé, pas en dessous",
-  ).toBeGreaterThan(boiteEnonce.x + boiteEnonce.width - 1);
-
-  const largeurUtilisee = boiteEtapes.x + boiteEtapes.width - boiteEnonce.x;
-  expect(largeurUtilisee, "la largeur du grand écran doit être exploitée").toBeGreaterThan(900);
-
-  // Téléphone : une seule colonne, dans le même ordre, sans débordement
-  // horizontal, avec des cibles tactiles d'au moins 44 px.
   await page.setViewportSize({ width: 375, height: 800 });
-  await page.reload();
-  await expect(enonce).toBeVisible();
-  await expect(etapes).toBeVisible();
-  const boiteEnonceMobile = (await enonce.boundingBox())!;
-  const boiteEtapesMobile = (await etapes.boundingBox())!;
-  expect(boiteEtapesMobile.y).toBeGreaterThan(
-    boiteEnonceMobile.y + boiteEnonceMobile.height - 1,
-  );
+  await page.goto(routeCoursEleve);
+  // La barre d'onglets en haut du contenu (voir onglets-cours.tsx) reste
+  // visible à 375 px, contrairement à la sidebar : c'est elle qui bascule ici.
+  await page.getByRole("tab", { name: "Exercices" }).click();
+
+  const carte = page.locator(`[data-exercice-card="${exercice.id}"]`);
+  await expect(carte).toBeVisible();
 
   const debordement = await page.evaluate(
     () => document.documentElement.scrollWidth - window.innerWidth,
   );
   expect(debordement, "aucun débordement horizontal à 375 px").toBeLessThanOrEqual(0);
 
-  const bouton = page.getByRole("button", { name: "Voir la correction" });
-  const boiteBouton = (await bouton.boundingBox())!;
-  expect(boiteBouton.height).toBeGreaterThanOrEqual(44);
+  // Cible tactile d'au moins 44 px, avant comme après dépliage.
+  const boutonCorrection = carte.getByRole("button", { name: "Correction", exact: true });
+  const boiteAvant = (await boutonCorrection.boundingBox())!;
+  expect(boiteAvant.height).toBeGreaterThanOrEqual(44);
+
+  await boutonCorrection.click();
+  await expect(carte.getByText(TEMOIN_CORRECTION)).toBeVisible(DELAI_ETAPE);
+  const debordementApres = await page.evaluate(
+    () => document.documentElement.scrollWidth - window.innerWidth,
+  );
+  expect(debordementApres, "aucun débordement horizontal une fois la correction dépliée").toBeLessThanOrEqual(0);
 });
