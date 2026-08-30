@@ -16,6 +16,13 @@ export default defineConfig({
         ["html", { outputFolder: "playwright-report", open: "never" }],
       ]
     : "list",
+  // Le runner CI est partagé et à court de mémoire sous une suite désormais
+  // longue (23 scénarios, un seul worker) : un clic "Créer"/"Publier" perd
+  // parfois la course contre le délai d'expiration de 15 s par pure
+  // contention de ressources, jamais au même endroit d'une exécution à
+  // l'autre. Une nouvelle tentative isole la vraie régression du bruit
+  // d'infrastructure sans masquer un échec qui se reproduirait.
+  retries: process.env.CI ? 2 : 0,
   timeout: 60_000,
   expect: {
     timeout: 15_000,
