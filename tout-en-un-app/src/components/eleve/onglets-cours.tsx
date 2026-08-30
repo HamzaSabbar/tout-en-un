@@ -94,7 +94,10 @@ export function BarreOngletsCours() {
   const { onglet, choisir } = useOngletsCours();
 
   return (
-    <div role="tablist" className="flex gap-1 border-b">
+    // `overflow-x-auto` + `shrink-0` : un 4ᵉ onglet (Nationaux) peut dépasser
+    // 375 px selon les libellés — la barre défile plutôt que de faire déborder
+    // toute la page (invariant du lot 3, vérifié à 375 px).
+    <div role="tablist" className="flex gap-1 overflow-x-auto border-b">
       {ONGLETS_COURS.map(({ cle, label }) => (
         <button
           key={cle}
@@ -103,7 +106,7 @@ export function BarreOngletsCours() {
           aria-selected={onglet === cle}
           onClick={() => choisir(cle)}
           className={cn(
-            "-mb-px flex min-h-11 items-center border-b-2 px-3 text-body-sm font-medium transition-colors",
+            "-mb-px flex min-h-11 shrink-0 items-center border-b-2 px-3 text-body-sm font-medium whitespace-nowrap transition-colors",
             onglet === cle
               ? "border-primary text-primary"
               : "border-transparent text-muted-foreground hover:text-foreground",

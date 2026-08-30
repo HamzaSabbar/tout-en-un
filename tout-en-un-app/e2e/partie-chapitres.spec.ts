@@ -91,7 +91,7 @@ test("un chapitre affecté à une partie apparaît groupé sous elle côté él�
   // formulaire chapitre porte le même intitulé de champ).
   const champLibellePartie = page.locator("#partie-libelle");
   await champLibellePartie.fill("Physique");
-  await champLibellePartie.locator("xpath=ancestor::form[1]").getByRole("button", { name: "Créer" }).click();
+  await champLibellePartie.locator("xpath=ancestor::form[1]").getByRole("button", { name: "Ajouter" }).click();
 
   const lignePartie = page.getByText("Physique", { exact: true }).locator("xpath=ancestor::li[1]");
   await expect(lignePartie).toBeVisible();

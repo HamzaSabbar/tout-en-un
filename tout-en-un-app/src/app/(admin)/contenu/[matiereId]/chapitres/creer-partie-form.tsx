@@ -21,14 +21,14 @@ export function CreerPartieForm({ matiereId }: { matiereId: string }) {
         <input type="hidden" name="matiere_id" value={matiereId} />
         <CardContent className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
-            <Label htmlFor="partie-libelle">Libellé</Label>
+            <Label htmlFor="partie-libelle">Nom de la partie</Label>
             <Input id="partie-libelle" name="libelle" required maxLength={150} />
           </div>
           {state.erreur && <p className="text-sm text-destructive">{state.erreur}</p>}
         </CardContent>
         <CardFooter>
           <Button type="submit" disabled={pending}>
-            Créer
+            Ajouter
           </Button>
         </CardFooter>
       </form>

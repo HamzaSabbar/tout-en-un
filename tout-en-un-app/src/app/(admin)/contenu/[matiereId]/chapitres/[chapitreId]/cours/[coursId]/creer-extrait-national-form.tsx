@@ -33,7 +33,7 @@ export function CreerExtraitNationalForm({
         <CardContent className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
             <Label htmlFor="extrait-enonce">Énoncé (bref descriptif)</Label>
-            <Textarea id="extrait-enonce" name="enonce" required rows={3} maxLength={2000} />
+            <Textarea id="extrait-enonce" name="extrait_enonce" required rows={3} maxLength={2000} />
           </div>
 
           <div className="flex gap-4">

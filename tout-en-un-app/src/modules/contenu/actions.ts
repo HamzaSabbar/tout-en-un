@@ -506,7 +506,12 @@ export async function creerExtraitNationalAction(
     cours_id: coursId,
     annee,
     session,
-    enonce: formData.get("enonce"),
+    // Champ de formulaire nommé `extrait_enonce`, pas `enonce` : les deux
+    // formulaires (extrait national et exercice) coexistent sur la même page
+    // de cours admin, et `enonce` y est déjà pris par l'exercice — un même nom
+    // aurait rendu les deux formulaires indiscernables pour un sélecteur qui
+    // scope par ce champ (et ambigu pour un lecteur d'écran).
+    enonce: formData.get("extrait_enonce"),
     sujet_document_id: sujetResultat.id,
     correction_document_id: correctionDocumentId,
     correction_video_ref: formData.get("correction_video_ref") || undefined,
