@@ -4,13 +4,17 @@ import { requirePermission } from "@/modules/acces/require-auth";
 import * as filiereService from "@/modules/contenu/filiere";
 import * as matiereService from "@/modules/contenu/matiere";
 import * as chapitreService from "@/modules/contenu/chapitre";
+import * as partieService from "@/modules/contenu/partie";
 import * as coursService from "@/modules/contenu/cours";
 import * as videoService from "@/modules/contenu/video";
 import * as documentService from "@/modules/contenu/document";
+import * as extraitNationalService from "@/modules/contenu/extrait-national";
+import * as examenNationalService from "@/modules/contenu/examen-national";
 import * as exerciceService from "@/modules/exercice/service";
 import {
   invaliderChapitre,
   invaliderCours,
+  invaliderExamensNationaux,
   invaliderMatiere,
 } from "@/modules/parcours-eleve/invalidation";
 
@@ -118,7 +122,17 @@ export async function deplacerChapitreAction(formData: FormData): Promise<void> 
   const chapitreId = BigInt(formData.get("chapitre_id") as string);
   const direction = formData.get("direction") as "monter" | "descendre";
 
-  const chapitres = await chapitreService.listerChapitres(matiereId);
+  const tousLesChapitres = await chapitreService.listerChapitres(matiereId);
+  const chapitreActuel = tousLesChapitres.find((c) => c.id === chapitreId);
+  if (!chapitreActuel) {
+    return;
+  }
+
+  // Le déplacement ne doit jamais franchir une frontière de partie : on ne
+  // réordonne qu'à l'intérieur du même groupe (y compris le groupe « sans
+  // partie », où `partie_id` vaut `null` des deux côtés). Sans ce filtre, un
+  // chapitre pourrait sauter silencieusement d'une partie à l'autre.
+  const chapitres = tousLesChapitres.filter((c) => c.partie_id === chapitreActuel.partie_id);
   const ids = chapitres.map((c) => c.id);
   const index = ids.findIndex((id) => id === chapitreId);
   const cible = direction === "monter" ? index - 1 : index + 1;
@@ -127,6 +141,54 @@ export async function deplacerChapitreAction(formData: FormData): Promise<void> 
   }
   [ids[index], ids[cible]] = [ids[cible], ids[index]];
   await chapitreService.reordonnerChapitres(ids);
+  invaliderMatiere(matiereId);
+}
+
+// --- Parties ---
+
+export async function creerPartieAction(
+  _prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  await requirePermission("contenu:gerer");
+  const resultat = await partieService.creerPartie(champsFormulaire(formData));
+  if (!resultat.succes) {
+    return { erreur: resultat.erreur };
+  }
+  return {};
+}
+
+export async function publierPartieAction(formData: FormData): Promise<void> {
+  await requirePermission("contenu:gerer");
+  const matiereId = BigInt(formData.get("matiere_id") as string);
+  const partieId = BigInt(formData.get("partie_id") as string);
+  await partieService.publierPartie(partieId);
+  invaliderMatiere(matiereId);
+}
+
+export async function depublierPartieAction(formData: FormData): Promise<void> {
+  await requirePermission("contenu:gerer");
+  const matiereId = BigInt(formData.get("matiere_id") as string);
+  const partieId = BigInt(formData.get("partie_id") as string);
+  await partieService.depublierPartie(partieId);
+  invaliderMatiere(matiereId);
+}
+
+export async function deplacerPartieAction(formData: FormData): Promise<void> {
+  await requirePermission("contenu:gerer");
+  const matiereId = BigInt(formData.get("matiere_id") as string);
+  const partieId = BigInt(formData.get("partie_id") as string);
+  const direction = formData.get("direction") as "monter" | "descendre";
+
+  const parties = await partieService.listerParties(matiereId);
+  const ids = parties.map((p) => p.id);
+  const index = ids.findIndex((id) => id === partieId);
+  const cible = direction === "monter" ? index - 1 : index + 1;
+  if (index === -1 || cible < 0 || cible >= ids.length) {
+    return;
+  }
+  [ids[index], ids[cible]] = [ids[cible], ids[index]];
+  await partieService.reordonnerParties(ids);
   invaliderMatiere(matiereId);
 }
 
@@ -375,4 +437,196 @@ export async function remplacerFichierAction(
     });
   }
   return {};
+}
+
+// --- Extraits nationaux ---
+//
+// Le(s) PDF sont téléversés via `documentService.televerserDocument()`, sans
+// rattachement à un chapitre/cours (seul `matiere_id` est passé, pour une clé
+// de stockage lisible) : sinon ces documents fuiteraient dans la liste
+// générique des documents du cours. L'extrait est l'unique propriétaire de
+// leurs identifiants, jamais `Document.statut` (voir
+// `src/modules/contenu/extrait-national.ts`).
+
+export async function creerExtraitNationalAction(
+  _prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const utilisateur = await requirePermission("contenu:gerer");
+  const matiereId = formData.get("matiere_id") as string;
+  const chapitreId = formData.get("chapitre_id") as string;
+  const coursId = formData.get("cours_id") as string;
+  const annee = formData.get("annee") as string;
+  const session = formData.get("session") as string;
+
+  const sujet = formData.get("sujet");
+  if (!(sujet instanceof File) || sujet.size === 0) {
+    return { erreur: "Choisis le PDF du sujet." };
+  }
+  const sujetResultat = await documentService.televerserDocument(
+    {
+      type: "sujet_pdf",
+      titre: `Sujet ${annee} ${session}`,
+      matiere_id: matiereId,
+      nom: sujet.name,
+      type_mime: sujet.type,
+      taille: sujet.size,
+    },
+    await fichierEnBuffer(sujet),
+    BigInt(utilisateur.id),
+  );
+  if (!sujetResultat.succes) {
+    return { erreur: sujetResultat.erreur };
+  }
+
+  let correctionDocumentId: string | undefined;
+  const correction = formData.get("correction");
+  if (correction instanceof File && correction.size > 0) {
+    const correctionResultat = await documentService.televerserDocument(
+      {
+        type: "correction_pdf",
+        titre: `Correction ${annee} ${session}`,
+        matiere_id: matiereId,
+        nom: correction.name,
+        type_mime: correction.type,
+        taille: correction.size,
+      },
+      await fichierEnBuffer(correction),
+      BigInt(utilisateur.id),
+    );
+    if (!correctionResultat.succes) {
+      return { erreur: correctionResultat.erreur };
+    }
+    correctionDocumentId = correctionResultat.id;
+  }
+
+  const resultat = await extraitNationalService.creerExtraitNational({
+    matiere_id: matiereId,
+    chapitre_id: chapitreId,
+    cours_id: coursId,
+    annee,
+    session,
+    enonce: formData.get("enonce"),
+    sujet_document_id: sujetResultat.id,
+    correction_document_id: correctionDocumentId,
+    correction_video_ref: formData.get("correction_video_ref") || undefined,
+    duree_recommandee: formData.get("duree_recommandee") || undefined,
+    difficulte: formData.get("difficulte") || undefined,
+  });
+  if (!resultat.succes) {
+    return { erreur: resultat.erreur };
+  }
+
+  invaliderCours(BigInt(matiereId), BigInt(chapitreId), BigInt(coursId));
+  return {};
+}
+
+export async function publierExtraitNationalAction(formData: FormData): Promise<void> {
+  await requirePermission("contenu:gerer");
+  const matiereId = BigInt(formData.get("matiere_id") as string);
+  const chapitreId = BigInt(formData.get("chapitre_id") as string);
+  const coursId = BigInt(formData.get("cours_id") as string);
+  await extraitNationalService.publierExtraitNational(
+    BigInt(formData.get("extrait_id") as string),
+  );
+  invaliderCours(matiereId, chapitreId, coursId);
+}
+
+export async function depublierExtraitNationalAction(formData: FormData): Promise<void> {
+  await requirePermission("contenu:gerer");
+  const matiereId = BigInt(formData.get("matiere_id") as string);
+  const chapitreId = BigInt(formData.get("chapitre_id") as string);
+  const coursId = BigInt(formData.get("cours_id") as string);
+  await extraitNationalService.depublierExtraitNational(
+    BigInt(formData.get("extrait_id") as string),
+  );
+  invaliderCours(matiereId, chapitreId, coursId);
+}
+
+// --- Examens nationaux ---
+
+export async function creerExamenNationalAction(
+  _prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const utilisateur = await requirePermission("contenu:gerer");
+  const matiereId = formData.get("matiere_id") as string;
+  const filiereId = formData.get("filiere_id") as string;
+  const annee = formData.get("annee") as string;
+  const session = formData.get("session") as string;
+
+  const sujet = formData.get("sujet");
+  if (!(sujet instanceof File) || sujet.size === 0) {
+    return { erreur: "Choisis le PDF du sujet." };
+  }
+  const sujetResultat = await documentService.televerserDocument(
+    {
+      type: "sujet_pdf",
+      titre: `Examen ${annee} ${session}`,
+      matiere_id: matiereId,
+      nom: sujet.name,
+      type_mime: sujet.type,
+      taille: sujet.size,
+    },
+    await fichierEnBuffer(sujet),
+    BigInt(utilisateur.id),
+  );
+  if (!sujetResultat.succes) {
+    return { erreur: sujetResultat.erreur };
+  }
+
+  let correctionDocumentId: string | undefined;
+  const correction = formData.get("correction");
+  if (correction instanceof File && correction.size > 0) {
+    const correctionResultat = await documentService.televerserDocument(
+      {
+        type: "correction_pdf",
+        titre: `Correction examen ${annee} ${session}`,
+        matiere_id: matiereId,
+        nom: correction.name,
+        type_mime: correction.type,
+        taille: correction.size,
+      },
+      await fichierEnBuffer(correction),
+      BigInt(utilisateur.id),
+    );
+    if (!correctionResultat.succes) {
+      return { erreur: correctionResultat.erreur };
+    }
+    correctionDocumentId = correctionResultat.id;
+  }
+
+  const resultat = await examenNationalService.creerExamenNational({
+    matiere_id: matiereId,
+    filiere_id: filiereId,
+    annee,
+    session,
+    sujet_document_id: sujetResultat.id,
+    correction_document_id: correctionDocumentId,
+    correction_video_ref: formData.get("correction_video_ref") || undefined,
+  });
+  if (!resultat.succes) {
+    return { erreur: resultat.erreur };
+  }
+
+  invaliderExamensNationaux(BigInt(matiereId));
+  return {};
+}
+
+export async function publierExamenNationalAction(formData: FormData): Promise<void> {
+  await requirePermission("contenu:gerer");
+  const matiereId = BigInt(formData.get("matiere_id") as string);
+  await examenNationalService.publierExamenNational(
+    BigInt(formData.get("examen_id") as string),
+  );
+  invaliderExamensNationaux(matiereId);
+}
+
+export async function depublierExamenNationalAction(formData: FormData): Promise<void> {
+  await requirePermission("contenu:gerer");
+  const matiereId = BigInt(formData.get("matiere_id") as string);
+  await examenNationalService.depublierExamenNational(
+    BigInt(formData.get("examen_id") as string),
+  );
+  invaliderExamensNationaux(matiereId);
 }

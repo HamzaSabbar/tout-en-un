@@ -4,12 +4,15 @@ import { obtenirCours } from "@/modules/contenu/cours";
 import { listerVideos } from "@/modules/contenu/video";
 import { listerDocumentsCours } from "@/modules/contenu/document";
 import { listerExercices } from "@/modules/exercice/service";
+import { listerExtraitsNationaux } from "@/modules/contenu/extrait-national";
 import {
   depublierDocumentAction,
   depublierExerciceAction,
+  depublierExtraitNationalAction,
   depublierVideoAction,
   publierDocumentAction,
   publierExerciceAction,
+  publierExtraitNationalAction,
   publierVideoAction,
 } from "@/modules/contenu/actions";
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { CreerVideoForm } from "./creer-video-form";
 import { TeleverserDocumentForm } from "./televerser-document-form";
 import { CreerExerciceForm } from "./creer-exercice-form";
+import { CreerExtraitNationalForm } from "./creer-extrait-national-form";
 import { requirePermission } from "@/modules/acces/require-auth";
 
 export default async function CoursDetailPage({
@@ -31,10 +35,11 @@ export default async function CoursDetailPage({
     notFound();
   }
 
-  const [videos, documents, exercices] = await Promise.all([
+  const [videos, documents, exercices, extraitsNationaux] = await Promise.all([
     listerVideos(cours.id),
     listerDocumentsCours(cours.id),
     listerExercices(cours.id),
+    listerExtraitsNationaux(cours.id),
   ]);
 
   return (
@@ -206,6 +211,63 @@ export default async function CoursDetailPage({
           )}
         </ul>
         <CreerExerciceForm
+          matiereId={matiereId}
+          chapitreId={chapitreId}
+          coursId={coursId}
+        />
+      </section>
+
+      <section className="flex flex-col gap-4">
+        <h2 className="text-lg font-medium">Extraits nationaux</h2>
+        <ul className="flex flex-col gap-3">
+          {extraitsNationaux.map((extrait) => (
+            <li
+              key={extrait.id.toString()}
+              className="flex items-center justify-between rounded-lg border p-4"
+            >
+              <div>
+                <p className="font-medium">
+                  {extrait.annee} · {extrait.session}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {extrait.enonce}
+                  {extrait.correction_document ? " · correction PDF" : ""}
+                  {extrait.correction_video_ref ? " · correction vidéo" : ""}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Badge variant={extrait.statut === "publie" ? "default" : "secondary"}>
+                  {extrait.statut}
+                </Badge>
+                {extrait.statut === "brouillon" ? (
+                  <form action={publierExtraitNationalAction}>
+                    <input type="hidden" name="matiere_id" value={matiereId} />
+                    <input type="hidden" name="chapitre_id" value={chapitreId} />
+                    <input type="hidden" name="cours_id" value={coursId} />
+                    <input type="hidden" name="extrait_id" value={extrait.id.toString()} />
+                    <Button type="submit" size="sm">
+                      Publier
+                    </Button>
+                  </form>
+                ) : (
+                  <form action={depublierExtraitNationalAction}>
+                    <input type="hidden" name="matiere_id" value={matiereId} />
+                    <input type="hidden" name="chapitre_id" value={chapitreId} />
+                    <input type="hidden" name="cours_id" value={coursId} />
+                    <input type="hidden" name="extrait_id" value={extrait.id.toString()} />
+                    <Button type="submit" size="sm" variant="outline">
+                      Dépublier
+                    </Button>
+                  </form>
+                )}
+              </div>
+            </li>
+          ))}
+          {extraitsNationaux.length === 0 && (
+            <p className="text-sm text-muted-foreground">Aucun extrait national pour l&apos;instant.</p>
+          )}
+        </ul>
+        <CreerExtraitNationalForm
           matiereId={matiereId}
           chapitreId={chapitreId}
           coursId={coursId}

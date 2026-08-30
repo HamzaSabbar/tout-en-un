@@ -26,6 +26,7 @@ describe("sélection de l'adaptateur de stockage", () => {
     await expect(storageService.genererUrlSignee("x", 600)).rejects.toThrow(
       /SUPABASE_STORAGE_URL/,
     );
+    await expect(storageService.telecharger("x")).rejects.toThrow(/SUPABASE_STORAGE_URL/);
     await expect(storageService.supprimer("x")).rejects.toThrow(/SUPABASE_STORAGE_URL/);
   });
 
@@ -37,6 +38,7 @@ describe("sélection de l'adaptateur de stockage", () => {
       /^http:\/\/localhost:3000\/api\/stockage-local\/1\/2\/3\/cours_pdf-0123456789abcdef\.pdf\?/,
     );
   });
+
 
   it("n'accepte le stockage local en production que sur dérogation explicite", async () => {
     vi.stubEnv("NODE_ENV", "production");

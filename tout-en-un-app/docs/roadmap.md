@@ -261,16 +261,35 @@ Architecture : sections 5.3, 5.5, 9.
 
 5 j, haute. Relier les annales au cours concerné, différenciateur produit fort.
 
-- [ ] Extraits rattachés à un chapitre et à un cours, avec année et session
+- [x] Extraits rattachés à un chapitre et à un cours, avec année et session
       (normale, rattrapage)
-- [ ] Examens complets consultables par année et par filière
-- [ ] Sujets et corrections en PDF, correction vidéo optionnelle
-- [ ] Unicité sur `examen_national (matiere_id, annee, session)`
-- [ ] Filigrane nominatif à la volée sur les sujets et corrections sensibles
+- [x] Examens complets consultables par année et par filière
+- [x] Sujets et corrections en PDF, correction vidéo optionnelle
+- [x] Unicité sur `examen_national (matiere_id, annee, session)`
+- [x] Filigrane nominatif à la volée sur les sujets et corrections sensibles
 
 **Critère de sortie.** Depuis la fiche d'un cours, l'élève accède aux extraits de
 nationaux qui portent sur ce cours. Un PDF téléchargé porte le nom de l'élève, un
 téléphone partiel et la date.
+
+Prouvé par `e2e/lot5-examens-nationaux.spec.ts` : le back-office crée et publie
+un extrait réel (formulaire, PDF compris), un élève abonné l'ouvre depuis
+l'onglet « Nationaux » de la page de cours et reçoit un PDF dont le flux
+décompressé porte son prénom, son nom et les 4 derniers chiffres de son
+téléphone — pas l'original téléversé. Second scénario : un examen complet
+n'est visible et accessible que pour la filière à laquelle il est rattaché,
+même pour un élève par ailleurs abonné à la même matière (403/404 sinon).
+
+Le filigrane est apposé à chaque lecture autorisée, pas seulement au
+téléchargement : le droit de téléchargement générique
+(`verifierDroitTelechargementDocument`) reste stubbé à `false` en attendant
+l'évolution du schéma des offres, donc les PDF nationaux ont leur propre
+routes de lecture dédiées plutôt que de dépendre de ce droit.
+
+Écart connu, hors périmètre assumé : la carte tableau de bord « compte à
+rebours du national », que le lot 3 rattachait à ce lot, dépend d'une table
+`parametre` qui n'existe pas encore (prévue au lot 7). `obtenirDateNational()`
+reste donc à `{ etat: "indisponible" }`.
 
 Architecture : sections 5.3, 8.
 

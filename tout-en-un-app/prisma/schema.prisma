@@ -89,6 +89,13 @@ enum StatutDemande {
   @@map("statut_demande")
 }
 
+enum SessionExamen {
+  normale
+  rattrapage
+
+  @@map("session_examen")
+}
+
 model Utilisateur {
   id                 BigInt    @id @default(autoincrement())
   nom                String
@@ -103,14 +110,14 @@ model Utilisateur {
   derniere_connexion DateTime?
   cree_le            DateTime  @default(now())
 
-  filiere                 Filiere?                @relation(fields: [filiere_id], references: [id])
+  filiere                 Filiere?                 @relation(fields: [filiere_id], references: [id])
   sessions                SessionUtilisateur[]
   jetons_reinitialisation JetonReinitialisation[]
   cours_enseignes         Cours[]
   fichiers_televerses     Fichier[]
   abonnements             Abonnement[]
-  demandes_matiere        DemandeMatiere[]        @relation("demandeur")
-  demandes_traitees       DemandeMatiere[]        @relation("traitant")
+  demandes_matiere        DemandeMatiere[]         @relation("demandeur")
+  demandes_traitees       DemandeMatiere[]         @relation("traitant")
   actions_admin           JournalAdmin[]
   evenements              EvenementApprentissage[]
 
@@ -155,38 +162,65 @@ model SessionUtilisateur {
 // dire « date inconnue ». La colonne pourra passer en NOT NULL une fois ces
 // lignes traitées.
 model Filiere {
-  id      BigInt  @id @default(autoincrement())
-  code    String  @unique
+  id      BigInt    @id @default(autoincrement())
+  code    String    @unique
   libelle String
-  ordre   Int     @default(0)
+  ordre   Int       @default(0)
   actif   Boolean   @default(true)
   cree_le DateTime? @default(now())
 
-  matieres FiliereMatiere[]
-  eleves   Utilisateur[]
+  matieres          FiliereMatiere[]
+  eleves            Utilisateur[]
+  examens_nationaux ExamenNational[]
 
   @@map("filiere")
 }
 
 model Matiere {
-  id          BigInt   @id @default(autoincrement())
-  code        String   @unique
+  id          BigInt    @id @default(autoincrement())
+  code        String    @unique
   libelle     String
   description String?
   icone       String?
   couleur     String?
-  statut      Statut   @default(brouillon)
+  statut      Statut    @default(brouillon)
   ordre       Int       @default(0)
   cree_le     DateTime? @default(now())
   supprime_le DateTime?
 
   filieres            FiliereMatiere[]
+  parties             Partie[]
   chapitres           Chapitre[]
   documents           Document[]
   abonnements_matiere AbonnementMatiere[]
   demandes            DemandeMatiere[]
+  extraits_nationaux  ExtraitNational[]
+  examens_nationaux   ExamenNational[]
 
   @@map("matiere")
+}
+
+// Niveau optionnel entre matière et chapitre (ex. Physique-Chimie : Physique /
+// Chimie). `chapitre.matiere_id` reste inchangé, renseigné qu'une partie
+// existe ou non : `partie_id` est un tag additionnel, jamais un remplacement
+// de la relation à la matière. `cree_le` non nullable : table neuve, aucune
+// ligne antérieure à dater.
+model Partie {
+  id          BigInt    @id @default(autoincrement())
+  matiere_id  BigInt
+  libelle     String
+  description String?
+  icone       String?
+  ordre       Int       @default(0)
+  statut      Statut    @default(brouillon)
+  cree_le     DateTime  @default(now())
+  supprime_le DateTime?
+
+  matiere   Matiere    @relation(fields: [matiere_id], references: [id])
+  chapitres Chapitre[]
+
+  @@index([matiere_id, statut, ordre])
+  @@map("partie")
 }
 
 model FiliereMatiere {
@@ -204,6 +238,7 @@ model FiliereMatiere {
 model Chapitre {
   id          BigInt    @id @default(autoincrement())
   matiere_id  BigInt
+  partie_id   BigInt?
   libelle     String
   description String?
   icone       String?
@@ -212,48 +247,52 @@ model Chapitre {
   cree_le     DateTime? @default(now())
   supprime_le DateTime?
 
-  matiere   Matiere    @relation(fields: [matiere_id], references: [id])
-  cours     Cours[]
-  documents Document[]
+  matiere            Matiere           @relation(fields: [matiere_id], references: [id])
+  partie             Partie?           @relation(fields: [partie_id], references: [id])
+  cours              Cours[]
+  documents          Document[]
+  extraits_nationaux ExtraitNational[]
 
   @@index([matiere_id, statut, ordre])
+  @@index([partie_id, statut, ordre])
   @@map("chapitre")
 }
 
 model Cours {
-  id             BigInt    @id @default(autoincrement())
-  chapitre_id    BigInt
-  titre          String
-  description    String?
-  ordre          Int       @default(0)
-  statut         Statut    @default(brouillon)
-  professeur_id  BigInt?
-  publie_le      DateTime?
-  cree_le        DateTime? @default(now())
-  supprime_le    DateTime?
+  id            BigInt    @id @default(autoincrement())
+  chapitre_id   BigInt
+  titre         String
+  description   String?
+  ordre         Int       @default(0)
+  statut        Statut    @default(brouillon)
+  professeur_id BigInt?
+  publie_le     DateTime?
+  cree_le       DateTime? @default(now())
+  supprime_le   DateTime?
 
-  chapitre   Chapitre     @relation(fields: [chapitre_id], references: [id])
-  professeur Utilisateur? @relation(fields: [professeur_id], references: [id])
-  videos     Video[]
-  documents  Document[]
-  exercices  Exercice[]
+  chapitre           Chapitre          @relation(fields: [chapitre_id], references: [id])
+  professeur         Utilisateur?      @relation(fields: [professeur_id], references: [id])
+  videos             Video[]
+  documents          Document[]
+  exercices          Exercice[]
+  extraits_nationaux ExtraitNational[]
 
   @@index([chapitre_id, statut, ordre])
   @@map("cours")
 }
 
 model Video {
-  id              BigInt    @id @default(autoincrement())
-  cours_id        BigInt
-  titre           String
-  description     String?
-  duree_secondes  Int?
-  fournisseur     String
-  video_ref       String
-  ordre           Int       @default(0)
-  statut          Statut    @default(brouillon)
-  cree_le         DateTime? @default(now())
-  supprime_le     DateTime?
+  id             BigInt    @id @default(autoincrement())
+  cours_id       BigInt
+  titre          String
+  description    String?
+  duree_secondes Int?
+  fournisseur    String
+  video_ref      String
+  ordre          Int       @default(0)
+  statut         Statut    @default(brouillon)
+  cree_le        DateTime? @default(now())
+  supprime_le    DateTime?
 
   cours Cours @relation(fields: [cours_id], references: [id])
 
@@ -262,14 +301,14 @@ model Video {
 }
 
 model Fichier {
-  id              BigInt    @id @default(autoincrement())
-  nom             String
-  cle_stockage    String    @unique
-  type_mime       String
-  taille          Int
-  televerse_par   BigInt?
-  cree_le         DateTime  @default(now())
-  supprime_le     DateTime?
+  id            BigInt    @id @default(autoincrement())
+  nom           String
+  cle_stockage  String    @unique
+  type_mime     String
+  taille        Int
+  televerse_par BigInt?
+  cree_le       DateTime  @default(now())
+  supprime_le   DateTime?
 
   televerseur Utilisateur? @relation(fields: [televerse_par], references: [id])
   documents   Document[]
@@ -293,7 +332,83 @@ model Document {
   cours    Cours?    @relation(fields: [cours_id], references: [id])
   fichier  Fichier   @relation(fields: [fichier_id], references: [id])
 
+  extrait_sujet      ExtraitNational? @relation("ExtraitSujetDocument")
+  extrait_correction ExtraitNational? @relation("ExtraitCorrectionDocument")
+  examen_sujet       ExamenNational?  @relation("ExamenSujetDocument")
+  examen_correction  ExamenNational?  @relation("ExamenCorrectionDocument")
+
   @@map("document")
+}
+
+// Extrait d'un examen national rattaché à un cours précis (architecture 5.3).
+// `enonce` est un court descriptif texte, pas du contenu riche : la matière
+// mathématique vit dans le PDF `sujet_document_id`, que l'élève ouvre — pas de
+// raison d'alourdir le budget JS élève avec le rendu KaTeX pour ce champ.
+//
+// `sujet_document_id`/`correction_document_id` pointent vers des lignes
+// `document` dont `matiere_id` est renseigné (clé de stockage lisible) mais
+// `chapitre_id`/`cours_id` restent `null` : sinon ces PDF fuiteraient dans les
+// listes génériques de documents d'un cours. La visibilité ne dépend donc
+// jamais de `document.statut` (laissé à `brouillon`), uniquement du statut de
+// cette table — un seul état à publier, pas deux à synchroniser. `@unique` sur
+// les deux colonnes : un PDF n'appartient qu'à un seul extrait.
+//
+// `cree_le` non nullable : table neuve, aucune ligne antérieure à dater.
+// `difficulte` bornée à 1..5 par une contrainte CHECK ajoutée à la main dans
+// la migration, comme `exercice.difficulte`.
+model ExtraitNational {
+  id                     BigInt        @id @default(autoincrement())
+  matiere_id             BigInt
+  chapitre_id            BigInt
+  cours_id               BigInt
+  annee                  Int
+  session                SessionExamen
+  enonce                 String
+  sujet_document_id      BigInt?       @unique
+  correction_document_id BigInt?       @unique
+  correction_video_ref   String?
+  duree_recommandee      Int?
+  difficulte             Int           @default(3)
+  ordre                  Int           @default(0)
+  statut                 Statut        @default(brouillon)
+  cree_le                DateTime      @default(now())
+  supprime_le            DateTime?
+
+  matiere             Matiere   @relation(fields: [matiere_id], references: [id])
+  chapitre            Chapitre  @relation(fields: [chapitre_id], references: [id])
+  cours               Cours     @relation(fields: [cours_id], references: [id])
+  sujet_document      Document? @relation("ExtraitSujetDocument", fields: [sujet_document_id], references: [id])
+  correction_document Document? @relation("ExtraitCorrectionDocument", fields: [correction_document_id], references: [id])
+
+  @@index([cours_id, statut, ordre])
+  @@map("extrait_national")
+}
+
+// Examen complet, consultable par année et par filière (architecture 5.3), pas
+// rattaché à un chapitre/cours contrairement à `extrait_national`. Unicité
+// `(matiere_id, annee, session)` exigée par architecture 5.9 et le critère de
+// sortie du lot 5.
+model ExamenNational {
+  id                     BigInt        @id @default(autoincrement())
+  matiere_id             BigInt
+  filiere_id             BigInt
+  annee                  Int
+  session                SessionExamen
+  sujet_document_id      BigInt?       @unique
+  correction_document_id BigInt?       @unique
+  correction_video_ref   String?
+  statut                 Statut        @default(brouillon)
+  cree_le                DateTime      @default(now())
+  supprime_le            DateTime?
+
+  matiere             Matiere   @relation(fields: [matiere_id], references: [id])
+  filiere             Filiere   @relation(fields: [filiere_id], references: [id])
+  sujet_document      Document? @relation("ExamenSujetDocument", fields: [sujet_document_id], references: [id])
+  correction_document Document? @relation("ExamenCorrectionDocument", fields: [correction_document_id], references: [id])
+
+  @@unique([matiere_id, annee, session])
+  @@index([matiere_id, filiere_id, annee])
+  @@map("examen_national")
 }
 
 // Un exercice n'est pas un PDF : énoncé, aide et correction sont du contenu riche

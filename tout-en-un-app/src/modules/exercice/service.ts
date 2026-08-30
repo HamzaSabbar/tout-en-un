@@ -147,58 +147,60 @@ function conditionExercicePublie(matiereId: bigint) {
   };
 }
 
-// Liste des exercices publiés d'un cours, pour la page de cours de l'élève. Le
-// contenu riche n'est **pas** sélectionné : la liste n'a besoin que des libellés,
-// et un énoncé complet par exercice traverserait le cache pour rien.
-export function listerExercicesPublies(matiereId: bigint, coursId: bigint) {
-  return prisma.exercice.findMany({
-    where: { cours_id: coursId, ...conditionExercicePublie(matiereId) },
-    orderBy: [{ ordre: "asc" }, { id: "asc" }],
-    select: { id: true, titre: true, difficulte: true },
-  });
-}
-
-// Lecture d'un exercice par un élève.
+// Énoncés des exercices publiés d'un cours, pour la page de cours de l'élève.
+// Une seule requête groupée pour tous les exercices du cours (jamais une par
+// exercice), tenue à l'écart du cache partagé de la page de cours : un énoncé
+// peut contenir des images et des tableaux, et gonflerait pour rien un cache
+// commun à tous les élèves d'une heure sur l'autre.
 //
-// L'aide et la correction ne sont renvoyées que si l'étape correspondante a été
-// franchie. C'est le même raisonnement que l'invariant 4 sur les bonnes réponses
-// d'un test : ce qui n'est pas encore dû à l'élève ne quitte pas le serveur. Les
-// masquer en CSS ou les envoyer puis les cacher côté client laisserait la réponse
-// lisible dans le HTML et dans la charge RSC.
-export async function obtenirExercicePourEleve(
+// L'énoncé n'a pas la confidentialité de l'aide ou de la correction — c'est la
+// question posée, pas la réponse — il peut donc être rendu directement, sans
+// attendre qu'une étape soit franchie.
+export async function obtenirEnoncesExercices(
   matiereId: bigint,
   coursId: bigint,
+): Promise<Map<string, DocumentRiche | null>> {
+  const exercices = await prisma.exercice.findMany({
+    where: { cours_id: coursId, ...conditionExercicePublie(matiereId) },
+    select: { id: true, enonce: true },
+  });
+  return new Map(
+    exercices.map((exercice) => [exercice.id.toString(), analyserDocumentRiche(exercice.enonce)]),
+  );
+}
+
+// Lecture de l'aide d'un exercice par un élève, au moment où il la demande.
+//
+// Ce que n'est pas encore dû à l'élève ne quitte pas le serveur : c'est
+// l'appelant (la route `/aide`) qui décide, à partir du journal, s'il a le
+// droit d'appeler cette fonction. Elle ne fait aucune vérification d'étape
+// elle-même, uniquement de visibilité (exercice publié).
+export async function obtenirAideExercice(
+  matiereId: bigint,
   exerciceId: bigint,
-  etapes: { aideOuverte: boolean; correctionVue: boolean },
-) {
+): Promise<DocumentRiche | null> {
   const exercice = await prisma.exercice.findFirst({
-    where: { id: exerciceId, cours_id: coursId, ...conditionExercicePublie(matiereId) },
-    select: {
-      id: true,
-      titre: true,
-      difficulte: true,
-      enonce: true,
-      aide: true,
-      correction_texte: true,
-      correction_video_ref: true,
-      cours: { select: { id: true, titre: true, chapitre_id: true } },
-    },
+    where: { id: exerciceId, ...conditionExercicePublie(matiereId) },
+    select: { aide: true },
+  });
+  return exercice ? analyserDocumentRiche(exercice.aide) : null;
+}
+
+// Lecture de la correction écrite d'un exercice, avec l'existence (pas le
+// contenu) d'une correction vidéo : c'est ce qui permet à l'appelant de
+// proposer l'étape vidéo juste après, sans requête supplémentaire.
+export async function obtenirCorrectionExercice(
+  matiereId: bigint,
+  exerciceId: bigint,
+): Promise<{ texte: DocumentRiche | null; videoDisponible: boolean } | null> {
+  const exercice = await prisma.exercice.findFirst({
+    where: { id: exerciceId, ...conditionExercicePublie(matiereId) },
+    select: { correction_texte: true, correction_video_ref: true },
   });
   if (!exercice) return null;
-
   return {
-    id: exercice.id,
-    titre: exercice.titre,
-    difficulte: exercice.difficulte,
-    cours: exercice.cours,
-    enonce: analyserDocumentRiche(exercice.enonce),
-    // `aideDisponible` dit qu'une aide existe, sans en livrer le contenu : c'est
-    // ce qui permet d'afficher ou non le bouton.
-    aideDisponible: exercice.aide !== null,
-    aide: etapes.aideOuverte ? analyserDocumentRiche(exercice.aide) : null,
-    correctionDisponible: exercice.correction_texte !== null,
-    correctionTexte: etapes.correctionVue ? analyserDocumentRiche(exercice.correction_texte) : null,
-    correctionVideoDisponible: exercice.correction_video_ref !== null,
+    texte: analyserDocumentRiche(exercice.correction_texte),
+    videoDisponible: exercice.correction_video_ref !== null,
   };
 }
 

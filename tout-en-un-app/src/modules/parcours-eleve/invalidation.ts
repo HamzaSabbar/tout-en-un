@@ -17,3 +17,9 @@ export function invaliderCours(
   invaliderChapitre(matiereId, chapitreId);
   revalidateTag(`cours:${coursId}`);
 }
+
+// La page « Examens nationaux » élève (lot 5) n'est pas rattachée à un cours :
+// sa propre étiquette de cache, à part de `invaliderMatiere`.
+export function invaliderExamensNationaux(matiereId: bigint) {
+  revalidateTag(`examens:${matiereId}`);
+}

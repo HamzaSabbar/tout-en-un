@@ -270,6 +270,24 @@ describe("écriture, lecture et suppression", () => {
     expect(restants.filter((nom) => nom.endsWith(".tmp"))).toEqual([]);
   });
 
+  it("relit les octets exactement écrits", async () => {
+    const contenu = Buffer.from("%PDF-1.4\nprincipal\n%%EOF\n", "latin1");
+    await adaptateur.televerser({ cle: CLE, contenu, typeMime: "application/pdf" });
+
+    const relu = await adaptateur.telecharger(CLE);
+    expect(relu.equals(contenu)).toBe(true);
+  });
+
+  it("échoue clairement sur une clé sans octets derrière elle", async () => {
+    await expect(adaptateur.telecharger("10/20/30/jamais-televerse.pdf")).rejects.toThrow(
+      /introuvable/,
+    );
+  });
+
+  it("refuse de lire hors de la racine", async () => {
+    await expect(adaptateur.telecharger("../secret.pdf")).rejects.toThrow(/invalide/);
+  });
+
   it("supprime un fichier et reste silencieux sur une clé absente", async () => {
     await adaptateur.televerser({
       cle: CLE,

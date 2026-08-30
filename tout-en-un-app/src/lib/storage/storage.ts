@@ -37,6 +37,10 @@ export const storageService: StorageService = {
     return choisirAdaptateur().genererUrlSignee(cle, dureeSecondes);
   },
 
+  async telecharger(cle) {
+    return choisirAdaptateur().telecharger(cle);
+  },
+
   async supprimer(cle) {
     return choisirAdaptateur().supprimer(cle);
   },

@@ -48,6 +48,14 @@ export const adaptateurSupabase: StorageService = {
     return data.signedUrl;
   },
 
+  async telecharger(cle) {
+    const { data, error } = await bucket().download(cle);
+    if (error || !data) {
+      throw new Error(`Échec du téléchargement (${cle}) : ${error?.message}`);
+    }
+    return Buffer.from(await data.arrayBuffer());
+  },
+
   async supprimer(cle) {
     const { error } = await bucket().remove([cle]);
     if (error) {

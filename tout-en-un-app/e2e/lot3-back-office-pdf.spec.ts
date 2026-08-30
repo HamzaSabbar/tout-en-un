@@ -176,7 +176,10 @@ test("un PDF téléversé et publié par le back-office est réellement ouvert p
   // l'étape 4 un vrai test de l'invalidation ciblée.
   await connecter(page, fixture.emailEleve);
   await page.goto(routeCoursEleve);
-  await expect(page.getByText("Aucun document publié pour ce cours.")).toBeVisible();
+  // Les documents vivent dans l'onglet Documents (voir onglets-cours.tsx),
+  // pas affiché par défaut.
+  await page.getByRole("tab", { name: "Documents" }).click();
+  await expect(page.getByText("Aucun document pour cette leçon.")).toBeVisible();
   await expect(page.getByText(titreDocument)).toHaveCount(0);
 
   // 3. L'admin publie par le bouton.
@@ -190,6 +193,7 @@ test("un PDF téléversé et publié par le back-office est réellement ouvert p
   // reprise ici, une reprise ne sauverait rien et masquerait le diagnostic.
   await connecter(page, fixture.emailEleve);
   await page.goto(routeCoursEleve);
+  await page.getByRole("tab", { name: "Documents" }).click();
   await expect(page.getByText(titreDocument)).toBeVisible();
 
   // 5. Le lien ne porte que des identifiants publics, et la clé de stockage
@@ -198,7 +202,7 @@ test("un PDF téléversé et publié par le back-office est réellement ouvert p
   // Location d'une redirection signée, qui contient la clé par construction, y
   // compris avec un vrai Supabase.
   const enregistre = await relireDocument(titreDocument);
-  const lien = page.getByRole("link", { name: "Lire le PDF" });
+  const lien = page.getByRole("link", { name: "Aperçu" });
   const href = await lien.getAttribute("href");
   expect(href).toBe(
     `/api/matieres/${fixture.matiere.id}/documents/${enregistre.id}/lecture`,

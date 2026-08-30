@@ -1,4 +1,5 @@
 import { unstable_cache } from "next/cache";
+import { listerExamensNationauxPublies } from "@/modules/contenu/examen-national";
 import {
   obtenirPageChapitrePubliee,
   obtenirPageCoursPubliee,
@@ -44,5 +45,18 @@ export function obtenirPageCoursEnCache(
       tags: [`matiere:${matiere}`, `chapitre:${chapitre}`, `cours:${cours}`],
       revalidate: DUREE_CACHE_STRUCTURE,
     },
+  )();
+}
+
+// Étiquette à part de `matiere:{id}` : la page « Examens nationaux » n'est pas
+// rattachée à un cours et se rafraîchit indépendamment (voir
+// `invaliderExamensNationaux`, `src/modules/parcours-eleve/invalidation.ts`).
+export function obtenirExamensNationauxEnCache(matiereId: bigint, filiereId: bigint) {
+  const matiere = matiereId.toString();
+  const filiere = filiereId.toString();
+  return unstable_cache(
+    () => listerExamensNationauxPublies(matiereId, filiereId),
+    ["parcours-eleve", "examens", matiere, filiere],
+    { tags: [`examens:${matiere}`], revalidate: DUREE_CACHE_STRUCTURE },
   )();
 }

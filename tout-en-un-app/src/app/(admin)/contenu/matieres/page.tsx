@@ -27,6 +27,13 @@ export default async function MatieresPage() {
               >
                 {matiere.libelle}
               </Link>
+              {" · "}
+              <Link
+                href={`/contenu/${matiere.id}/examens`}
+                className="text-sm hover:underline"
+              >
+                Examens
+              </Link>
               <p className="text-sm text-muted-foreground">{matiere.code}</p>
             </div>
             <div className="flex items-center gap-2">
