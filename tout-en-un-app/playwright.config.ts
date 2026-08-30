@@ -18,14 +18,16 @@ export default defineConfig({
     : "list",
   // Le runner CI est partagé et à court de mémoire sous une suite désormais
   // longue (23 scénarios, un seul worker) : un clic "Créer"/"Publier" perd
-  // parfois la course contre le délai d'expiration de 15 s par pure
-  // contention de ressources, jamais au même endroit d'une exécution à
-  // l'autre. Une nouvelle tentative isole la vraie régression du bruit
-  // d'infrastructure sans masquer un échec qui se reproduirait.
+  // parfois la course contre le délai d'expiration par pure contention de
+  // ressources, jamais au même endroit d'une exécution à l'autre (observé sur
+  // trois tentatives d'un même test, chacune échouant à une étape différente).
+  // Le délai d'assertion élargi absorbe ce bruit ; les tentatives
+  // supplémentaires couvrent le cas résiduel où une seule étape ne suffirait
+  // pas. Aucun des deux ne masque un échec qui se reproduirait.
   retries: process.env.CI ? 2 : 0,
   timeout: 60_000,
   expect: {
-    timeout: 15_000,
+    timeout: process.env.CI ? 30_000 : 15_000,
   },
   globalSetup: "./e2e/support/global-setup.ts",
   use: {
