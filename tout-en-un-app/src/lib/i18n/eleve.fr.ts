@@ -5,7 +5,6 @@ export const ELEVE_FR = {
     accueil: "Accueil",
     monCompte: "Mon compte",
     seDeconnecter: "Se déconnecter",
-    demanderAcces: "Demander l'accès",
     live: "Live",
     resultats: "Résultats",
     bientot: "Bientôt",
@@ -16,6 +15,7 @@ export const ELEVE_FR = {
     matieres: "Mes matières",
     retourMatieres: "Retour aux matières",
     retourMatiere: "Retour à la matière",
+    retourPartie: "Retour à la partie",
     retourChapitre: "Retour au chapitre",
   },
   matieres: {
@@ -36,8 +36,12 @@ export const ELEVE_FR = {
     prochainLiveVide: "Aucun live programmé pour l'instant.",
     derniereNote: "Dernière note",
     derniereNoteVide: "Ta note apparaîtra ici après ton premier test.",
-    national: "Compte à rebours du national",
-    nationalVide: "Le compte à rebours sera activé prochainement.",
+  },
+  compteARebours: {
+    titre: "Compte à rebours du national",
+    vide: "La date du prochain national n'est pas encore annoncée.",
+    jour: "jour",
+    jours: "jours",
   },
   chapitres: {
     titre: "Chapitres",
@@ -48,7 +52,8 @@ export const ELEVE_FR = {
     nbExercices: "exercices",
   },
   parties: {
-    titre: "Parties",
+    titre: "Choisis une partie",
+    ouvrir: "Ouvrir la partie",
     vide: "Aucun chapitre publié dans cette partie pour le moment.",
     sansPartie: "Autres chapitres",
   },

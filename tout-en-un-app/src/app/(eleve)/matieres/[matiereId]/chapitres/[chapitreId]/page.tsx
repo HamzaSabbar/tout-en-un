@@ -32,8 +32,15 @@ export default async function ChapitrePage({ params }: ChapitrePageProps) {
 
   return (
     <div className={`${COQUILLE_ELEVE} flex min-h-screen flex-col gap-8 py-8`}>
-      <Link href={`/matieres/${matiereId}`} className="inline-flex min-h-11 w-fit items-center text-sm font-medium hover:underline">
-        {ELEVE_FR.navigation.retourMatiere}
+      <Link
+        href={
+          chapitre.partie
+            ? `/matieres/${matiereId}/parties/${chapitre.partie.id}`
+            : `/matieres/${matiereId}`
+        }
+        className="inline-flex min-h-11 w-fit items-center text-sm font-medium hover:underline"
+      >
+        {chapitre.partie ? ELEVE_FR.navigation.retourPartie : ELEVE_FR.navigation.retourMatiere}
       </Link>
 
       <header className="relative overflow-hidden rounded-2xl bg-secondary p-6 sm:p-8">

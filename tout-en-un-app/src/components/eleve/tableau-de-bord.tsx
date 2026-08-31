@@ -1,4 +1,4 @@
-import { BarChart3, CalendarClock, GraduationCap, Trophy } from "lucide-react";
+import { BarChart3, CalendarClock, Trophy } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ELEVE_FR } from "@/lib/i18n/eleve.fr";
 import type { DonneeTableauDeBord } from "@/modules/parcours-eleve/tableau-de-bord";
@@ -8,7 +8,6 @@ interface TableauDeBordProps {
     progression: DonneeTableauDeBord;
     prochainLive: DonneeTableauDeBord;
     derniereNote: DonneeTableauDeBord;
-    dateNational: DonneeTableauDeBord;
   };
 }
 
@@ -31,12 +30,6 @@ const CARTES = [
     videTexte: ELEVE_FR.tableauDeBord.derniereNoteVide,
     Icone: Trophy,
   },
-  {
-    cle: "dateNational",
-    titre: ELEVE_FR.tableauDeBord.national,
-    videTexte: ELEVE_FR.tableauDeBord.nationalVide,
-    Icone: GraduationCap,
-  },
 ] as const;
 
 export function TableauDeBord({ donnees }: TableauDeBordProps) {
@@ -45,10 +38,10 @@ export function TableauDeBord({ donnees }: TableauDeBordProps) {
       <h2 id="tableau-de-bord-titre" className="text-h3 font-semibold">
         {ELEVE_FR.tableauDeBord.titre}
       </h2>
-      {/* Les quatre cartes tiennent sur une ligne à partir de 1024 px : elles
-          sont le résumé de la matière, et un résumé qui se déroule sur quatre
+      {/* Les trois cartes tiennent sur une ligne à partir de 1024 px : elles
+          sont le résumé de la matière, et un résumé qui se déroule sur trois
           écrans n'en est plus un. */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {CARTES.map(({ cle, titre, videTexte, Icone }) => (
           <Card key={cle} data-dashboard-card={cle}>
             <CardHeader className="flex flex-row items-center gap-3 pb-2">

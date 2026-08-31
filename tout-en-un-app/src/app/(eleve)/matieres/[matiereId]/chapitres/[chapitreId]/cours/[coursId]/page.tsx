@@ -75,7 +75,12 @@ export default async function CoursPage({ params }: CoursPageProps) {
               <ChevronRight aria-hidden="true" className="size-3.5 shrink-0" />
               {cours.chapitre.partie && (
                 <>
-                  <span>{cours.chapitre.partie.libelle}</span>
+                  <Link
+                    href={`/matieres/${matiereId}/parties/${cours.chapitre.partie.id}`}
+                    className="hover:text-foreground hover:underline"
+                  >
+                    {cours.chapitre.partie.libelle}
+                  </Link>
                   <ChevronRight aria-hidden="true" className="size-3.5 shrink-0" />
                 </>
               )}

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, BookOpen, ChevronDown, Home, Radio, UserPlus } from "lucide-react";
+import { BarChart3, BookOpen, ChevronDown, Home, Radio } from "lucide-react";
 import { SousLiensOngletsCours } from "@/components/eleve/onglets-cours";
 import { Badge } from "@/components/ui/badge";
 import { ELEVE_FR } from "@/lib/i18n/eleve.fr";
@@ -19,7 +19,6 @@ import { cn } from "@/lib/utils";
 const LIENS_REELS = [
   { href: "/compte", label: ELEVE_FR.coquille.accueil, icone: Home },
   { href: "/matieres", label: ELEVE_FR.navigation.matieres, icone: BookOpen },
-  { href: "/demande-acces", label: ELEVE_FR.coquille.demanderAcces, icone: UserPlus },
 ] as const;
 
 const LIENS_A_VENIR = [

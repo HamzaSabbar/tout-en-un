@@ -4,6 +4,7 @@ const findFirstCours = vi.fn();
 const findFirstMatiere = vi.fn();
 const findManyMatiere = vi.fn();
 const findFirstChapitre = vi.fn();
+const findFirstPartie = vi.fn();
 const findFirstEvenement = vi.fn();
 const findManyEvenement = vi.fn();
 
@@ -14,6 +15,7 @@ vi.mock("@/lib/db", () => ({
       findFirst: (...args: unknown[]) => findFirstMatiere(...args),
     },
     chapitre: { findFirst: (...args: unknown[]) => findFirstChapitre(...args) },
+    partie: { findFirst: (...args: unknown[]) => findFirstPartie(...args) },
     cours: { findFirst: (...args: unknown[]) => findFirstCours(...args) },
     evenementApprentissage: {
       findFirst: (...args: unknown[]) => findFirstEvenement(...args),
@@ -28,6 +30,7 @@ import {
   obtenirPageChapitrePubliee,
   obtenirPageCoursPubliee,
   obtenirPageMatierePubliee,
+  obtenirPagePartiePubliee,
   obtenirRepriseGlobale,
   obtenirReprisePourMatiere,
 } from "@/modules/parcours-eleve/service";
@@ -37,6 +40,7 @@ beforeEach(() => {
   findFirstMatiere.mockReset();
   findManyMatiere.mockReset();
   findFirstChapitre.mockReset();
+  findFirstPartie.mockReset();
   findFirstEvenement.mockReset();
   findManyEvenement.mockReset();
 });
@@ -234,6 +238,42 @@ describe("obtenirPageChapitrePubliee", () => {
     });
     const resultat = await obtenirPageChapitrePubliee(BigInt(10), BigInt(20));
     expect(resultat?.partie).toEqual({ id: "100", libelle: "Physique" });
+  });
+});
+
+describe("obtenirPagePartiePubliee", () => {
+  it("convertit les identifiants et compte les chapitres de la partie", async () => {
+    findFirstPartie.mockResolvedValue({
+      id: BigInt(100),
+      libelle: "Physique",
+      matiere: { id: BigInt(10), libelle: "Physique-Chimie" },
+      chapitres: [
+        {
+          id: BigInt(20),
+          libelle: "Les ondes",
+          description: null,
+          _count: { cours: 1 },
+          cours: [{ _count: { exercices: 2 } }],
+        },
+      ],
+    });
+
+    const resultat = await obtenirPagePartiePubliee(BigInt(10), BigInt(100));
+
+    expect(findFirstPartie).toHaveBeenCalledOnce();
+    expect(resultat).toEqual({
+      id: "100",
+      libelle: "Physique",
+      matiere: { id: "10", libelle: "Physique-Chimie" },
+      chapitres: [
+        { id: "20", libelle: "Les ondes", description: null, nbCours: 1, nbExercices: 2 },
+      ],
+    });
+  });
+
+  it("rend null quand la partie n'est pas visible (non publiée, supprimée, ou d'une autre matière)", async () => {
+    findFirstPartie.mockResolvedValue(null);
+    expect(await obtenirPagePartiePubliee(BigInt(10), BigInt(100))).toBeNull();
   });
 });
 

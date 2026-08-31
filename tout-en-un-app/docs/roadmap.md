@@ -124,7 +124,10 @@ seule fois, côté serveur.
 - [x] Modèle `offre`, `abonnement`, `abonnement_matiere` : l'accès se joue
       matière par matière, pas au niveau de l'abonnement
 - [x] Parcours de demande d'accès (`demande_matiere`) et file de traitement dans
-      le back-office
+      le back-office. Le lien élève vers `/demande-acces` (nav, page Matières)
+      a depuis été retiré de l'affichage — la route et le mécanisme
+      d'activation restent inchangés, seul l'accès direct depuis la
+      navigation a disparu
 - [x] Activation manuelle par l'admin : durée, montant, référence de paiement,
       confirmation WhatsApp
 - [x] `verifierAccesMatiere()` dans `src/modules/acces/`, appelée en amont de
@@ -153,8 +156,8 @@ Architecture : sections 5.1, 6, 13.
 10 j, critique. Ouvrir l'espace élève en rendu serveur, pour un écran large en
 usage courant et un téléphone sur réseau 4G irrégulier en usage secondaire.
 
-- [x] Choix de la matière, puis tableau de bord à quatre cartes : progression,
-      prochain live, dernière note, compte à rebours du national
+- [x] Choix de la matière, puis tableau de bord à trois cartes : progression,
+      prochain live, dernière note
 - [x] Navigation chapitres puis cours puis ressources, en une requête agrégée par
       page
 - [x] Lecteur vidéo en chargement différé, avec restriction de domaine
@@ -167,12 +170,19 @@ usage courant et un téléphone sur réseau 4G irrégulier en usage secondaire.
       `extrait_national` — `video` et `exercice` sont faits, `extrait_national`
       appartient au lot 5
 
-**Les quatre cartes du tableau de bord sont des emplacements réservés.** Elles
+**Les trois cartes du tableau de bord sont des emplacements réservés.** Elles
 sont livrées, disposées et accessibles, mais toutes rendent « Pas encore
-disponible » : leurs sources appartiennent aux lots 5 (compte à rebours du
-national), 6 (dernière note), 7 (progression) et 8 (prochain live). Chaque carte a
-déjà sa fonction dédiée dans `parcours-eleve/tableau-de-bord.ts` ; le lot
-propriétaire n'aura qu'à en remplir le corps, sans toucher au rendu.
+disponible » : leurs sources appartiennent aux lots 6 (dernière note), 7
+(progression) et 8 (prochain live). Chaque carte a déjà sa fonction dédiée
+dans `parcours-eleve/tableau-de-bord.ts` ; le lot propriétaire n'aura qu'à en
+remplir le corps, sans toucher au rendu.
+
+Le compte à rebours du national, initialement prévu comme une quatrième carte
+de ce tableau de bord matière, a été implémenté séparément (hors lots) sur
+l'accueil (`/compte`) plutôt que sur chaque page matière : la date du
+prochain national ne dépend d'aucune matière particulière. Source :
+`parcours-eleve/compte-a-rebours.ts`, date modifiable par l'admin depuis
+`/parametres` (`contenu/parametre.ts`).
 
 Le parcours PDF est prouvé de bout en bout par le back-office réel, téléversement
 puis publication puis lecture par l'élève jusqu'aux octets du fichier

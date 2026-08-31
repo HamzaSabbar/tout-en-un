@@ -3,12 +3,12 @@ import { notFound } from "next/navigation";
 import { Award, BookOpen, ChevronRight, PlayCircle } from "lucide-react";
 import { AccesRefuse } from "@/components/acces-refuse";
 import { COQUILLE_ELEVE } from "@/components/eleve/coquille";
+import { ListeChapitres } from "@/components/eleve/liste-chapitres";
 import { TableauDeBord } from "@/components/eleve/tableau-de-bord";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ELEVE_FR } from "@/lib/i18n/eleve.fr";
 import { analyserIdentifiant } from "@/lib/identifiant";
-import { accorder } from "@/lib/pluriel";
 import { verifierAccesMatiere } from "@/modules/acces/acces-matiere";
 import { requireAuth } from "@/modules/acces/require-auth";
 import { obtenirPageMatiereEnCache } from "@/modules/parcours-eleve/cache";
@@ -17,49 +17,6 @@ import { obtenirTableauDeBord } from "@/modules/parcours-eleve/tableau-de-bord";
 
 interface MatierePageProps {
   params: Promise<{ matiereId: string }>;
-}
-
-interface ChapitreCarte {
-  id: string;
-  libelle: string;
-  description: string | null;
-  nbCours: number;
-  nbExercices: number;
-}
-
-function ListeChapitres({ chapitres, matiereId }: { chapitres: ChapitreCarte[]; matiereId: string }) {
-  return (
-    <ul className="space-y-3">
-      {chapitres.map((chapitre, index) => (
-        <li key={chapitre.id}>
-          <Link
-            href={`/matieres/${matiereId}/chapitres/${chapitre.id}`}
-            className="block min-h-11 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <Card className="transition-all hover:-translate-y-0.5 hover:shadow-md">
-              <CardHeader className="flex flex-row flex-wrap items-center gap-3">
-                <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-body-sm font-semibold text-primary-foreground">
-                  {index + 1}
-                </span>
-                <CardTitle className="flex-1 text-base">{chapitre.libelle}</CardTitle>
-                <ChevronRight aria-hidden="true" className="size-5 shrink-0 text-muted-foreground" />
-              </CardHeader>
-              <CardContent className="flex flex-wrap items-center gap-2 text-body-sm text-muted-foreground">
-                {chapitre.description && <p className="w-full">{chapitre.description}</p>}
-                <span className="rounded-full bg-muted px-2.5 py-1">
-                  {chapitre.nbCours} {ELEVE_FR.chapitres.nbCours}
-                </span>
-                <span className="rounded-full bg-muted px-2.5 py-1">
-                  {chapitre.nbExercices}{" "}
-                  {accorder(chapitre.nbExercices, ELEVE_FR.chapitres.nbExercice, ELEVE_FR.chapitres.nbExercices)}
-                </span>
-              </CardContent>
-            </Card>
-          </Link>
-        </li>
-      ))}
-    </ul>
-  );
 }
 
 export default async function MatierePage({ params }: MatierePageProps) {
@@ -146,35 +103,56 @@ export default async function MatierePage({ params }: MatierePageProps) {
         </Card>
       </Link>
 
-      <section aria-labelledby="chapitres-titre" className="space-y-3">
-        <h2 id="chapitres-titre" className="text-h3 font-semibold">{ELEVE_FR.chapitres.titre}</h2>
-        {matiere.parties.length === 0 ? (
-          matiere.chapitresSansPartie.length === 0 ? (
+      {matiere.parties.length === 0 ? (
+        <section aria-labelledby="chapitres-titre" className="space-y-3">
+          <h2 id="chapitres-titre" className="text-h3 font-semibold">{ELEVE_FR.chapitres.titre}</h2>
+          {matiere.chapitresSansPartie.length === 0 ? (
             <p className="text-muted-foreground">{ELEVE_FR.chapitres.vide}</p>
           ) : (
             <ListeChapitres chapitres={matiere.chapitresSansPartie} matiereId={matiere.id} />
-          )
-        ) : (
-          <div className="space-y-6">
-            {matiere.parties.map((partie) => (
-              <div key={partie.id} className="space-y-3">
-                <h3 className="text-body font-semibold text-muted-foreground">{partie.libelle}</h3>
-                {partie.chapitres.length === 0 ? (
-                  <p className="text-body-sm text-muted-foreground">{ELEVE_FR.parties.vide}</p>
-                ) : (
-                  <ListeChapitres chapitres={partie.chapitres} matiereId={matiere.id} />
-                )}
-              </div>
-            ))}
-            {matiere.chapitresSansPartie.length > 0 && (
-              <div className="space-y-3">
-                <h3 className="text-h3 font-semibold text-muted-foreground">{ELEVE_FR.parties.sansPartie}</h3>
-                <ListeChapitres chapitres={matiere.chapitresSansPartie} matiereId={matiere.id} />
-              </div>
-            )}
-          </div>
-        )}
-      </section>
+          )}
+        </section>
+      ) : (
+        <>
+          <section aria-labelledby="parties-titre" className="space-y-3">
+            <h2 id="parties-titre" className="text-h3 font-semibold">{ELEVE_FR.parties.titre}</h2>
+            <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {matiere.parties.map((partie) => (
+                <li key={partie.id}>
+                  <Link
+                    href={`/matieres/${matiere.id}/parties/${partie.id}`}
+                    aria-label={`${ELEVE_FR.parties.ouvrir} : ${partie.libelle}`}
+                    className="block min-h-11 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <Card className="h-full transition-all hover:-translate-y-0.5 hover:shadow-md">
+                      <CardHeader className="flex flex-row items-center gap-3">
+                        <span className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-secondary text-secondary-foreground">
+                          <BookOpen aria-hidden="true" className="size-5" />
+                        </span>
+                        <CardTitle className="flex-1 text-lg">{partie.libelle}</CardTitle>
+                        <ChevronRight aria-hidden="true" className="size-5 text-muted-foreground" />
+                      </CardHeader>
+                    </Card>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
+
+          {/* Un chapitre peut rester sans partie même quand la matière en a
+              (le formulaire d'admin ne l'impose pas) : sans cette section, il
+              deviendrait invisible côté élève au lieu de simplement ne pas
+              être groupé. */}
+          {matiere.chapitresSansPartie.length > 0 && (
+            <section aria-labelledby="sans-partie-titre" className="space-y-3">
+              <h2 id="sans-partie-titre" className="text-h3 font-semibold">
+                {ELEVE_FR.parties.sansPartie}
+              </h2>
+              <ListeChapitres chapitres={matiere.chapitresSansPartie} matiereId={matiere.id} />
+            </section>
+          )}
+        </>
+      )}
     </div>
   );
 }

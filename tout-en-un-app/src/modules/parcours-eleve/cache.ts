@@ -4,6 +4,7 @@ import {
   obtenirPageChapitrePubliee,
   obtenirPageCoursPubliee,
   obtenirPageMatierePubliee,
+  obtenirPagePartiePubliee,
 } from "@/modules/parcours-eleve/service";
 
 const DUREE_CACHE_STRUCTURE = 60 * 60;
@@ -14,6 +15,16 @@ export function obtenirPageMatiereEnCache(matiereId: bigint) {
     () => obtenirPageMatierePubliee(matiereId),
     ["parcours-eleve", "matiere", id],
     { tags: [`matiere:${id}`], revalidate: DUREE_CACHE_STRUCTURE },
+  )();
+}
+
+export function obtenirPagePartieEnCache(matiereId: bigint, partieId: bigint) {
+  const matiere = matiereId.toString();
+  const partie = partieId.toString();
+  return unstable_cache(
+    () => obtenirPagePartiePubliee(matiereId, partieId),
+    ["parcours-eleve", "partie", matiere, partie],
+    { tags: [`matiere:${matiere}`], revalidate: DUREE_CACHE_STRUCTURE },
   )();
 }
 
