@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BookOpen, FolderOpen, Inbox, Layers, Tag, Users, type LucideIcon } from "lucide-react";
+import { BookOpen, FolderOpen, Inbox, Layers, Settings, Tag, Users, type LucideIcon } from "lucide-react";
 import { ADMIN_FR } from "@/lib/i18n/admin.fr";
 import { cn } from "@/lib/utils";
 
@@ -16,6 +16,10 @@ const LIENS_ABONNEMENTS = [
   { href: "/abonnements", label: ADMIN_FR.navigation.demandes, icone: Inbox },
   { href: "/abonnements/eleves", label: ADMIN_FR.navigation.eleves, icone: Users },
   { href: "/abonnements/offres", label: ADMIN_FR.navigation.offres, icone: Tag },
+] as const;
+
+const LIENS_PLATEFORME = [
+  { href: "/parametres", label: ADMIN_FR.navigation.parametres, icone: Settings },
 ] as const;
 
 function GroupeLiens({
@@ -66,6 +70,7 @@ export function AdminNav({
     <div className="flex flex-col gap-5 p-2">
       {gereContenu && <GroupeLiens titre={ADMIN_FR.navigation.contenu} liens={LIENS_CONTENU} />}
       {gereAbonnements && <GroupeLiens titre={ADMIN_FR.navigation.abonnements} liens={LIENS_ABONNEMENTS} />}
+      {gereContenu && <GroupeLiens titre={ADMIN_FR.navigation.plateforme} liens={LIENS_PLATEFORME} />}
     </div>
   );
 }

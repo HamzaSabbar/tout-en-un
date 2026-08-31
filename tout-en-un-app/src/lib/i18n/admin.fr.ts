@@ -15,5 +15,7 @@ export const ADMIN_FR = {
     demandes: "Demandes",
     eleves: "Élèves",
     offres: "Offres",
+    plateforme: "Plateforme",
+    parametres: "Paramètres",
   },
 } as const;

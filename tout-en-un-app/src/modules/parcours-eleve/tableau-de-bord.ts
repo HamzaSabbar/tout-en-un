@@ -29,25 +29,15 @@ export async function obtenirDerniereNote(
   return { etat: "indisponible" };
 }
 
-export async function obtenirDateNational(
-  _utilisateurId: bigint,
-  _matiereId: bigint,
-): Promise<DonneeTableauDeBord> {
-  void _utilisateurId;
-  void _matiereId;
-  return { etat: "indisponible" };
-}
-
 export async function obtenirTableauDeBord(
   utilisateurId: bigint,
   matiereId: bigint,
 ) {
-  const [progression, prochainLive, derniereNote, dateNational] = await Promise.all([
+  const [progression, prochainLive, derniereNote] = await Promise.all([
     obtenirProgressionMatiere(utilisateurId, matiereId),
     obtenirProchainLive(utilisateurId, matiereId),
     obtenirDerniereNote(utilisateurId, matiereId),
-    obtenirDateNational(utilisateurId, matiereId),
   ]);
 
-  return { progression, prochainLive, derniereNote, dateNational };
+  return { progression, prochainLive, derniereNote };
 }

@@ -109,6 +109,39 @@ export async function obtenirPageMatierePubliee(matiereId: bigint) {
   };
 }
 
+// Une partie (Physique / Chimie) est son propre écran de choix côté élève :
+// même garde que `obtenirPageChapitrePubliee` (matière publiée, partie elle-
+// même publiée et appartenant bien à `matiereId`), même carte de chapitre que
+// la page matière (`SELECT_CHAPITRE_CARTE`/`mapperChapitreCarte`).
+export async function obtenirPagePartiePubliee(matiereId: bigint, partieId: bigint) {
+  const partie = await prisma.partie.findFirst({
+    where: {
+      id: partieId,
+      matiere_id: matiereId,
+      statut: "publie",
+      supprime_le: null,
+      matiere: { statut: "publie", supprime_le: null },
+    },
+    select: {
+      id: true,
+      libelle: true,
+      matiere: { select: { id: true, libelle: true } },
+      chapitres: {
+        where: { statut: "publie", supprime_le: null },
+        orderBy: [{ ordre: "asc" }, { id: "asc" }],
+        select: SELECT_CHAPITRE_CARTE,
+      },
+    },
+  });
+  if (!partie) return null;
+  return {
+    id: partie.id.toString(),
+    libelle: partie.libelle,
+    matiere: { id: partie.matiere.id.toString(), libelle: partie.matiere.libelle },
+    chapitres: partie.chapitres.map(mapperChapitreCarte),
+  };
+}
+
 // Dernier cours de cette matière dans lequel l'élève a franchi une étape
 // d'exercice. Dérivé du journal existant, sans nouvelle colonne : `cours_id`
 // est déjà renseigné sur chaque événement d'exercice. Limite honnête à

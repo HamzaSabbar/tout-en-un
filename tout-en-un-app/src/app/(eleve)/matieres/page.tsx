@@ -1,7 +1,6 @@
 import Link from "next/link";
-import { BookOpen, ChevronRight, GraduationCap, UserPlus } from "lucide-react";
+import { BookOpen, ChevronRight, GraduationCap } from "lucide-react";
 import { COQUILLE_ELEVE } from "@/components/eleve/coquille";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ELEVE_FR } from "@/lib/i18n/eleve.fr";
 import { accorder } from "@/lib/pluriel";
@@ -19,21 +18,13 @@ export default async function MatieresPage() {
           aria-hidden="true"
           className="pointer-events-none absolute -right-6 -top-6 size-40 text-primary/10"
         />
-        <div className="relative flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div className="space-y-2">
-            <h1 className="text-h1 font-bold tracking-tight text-secondary-foreground">
-              {ELEVE_FR.matieres.titre}
-            </h1>
-            <p className="max-w-2xl text-body text-secondary-foreground/80">
-              {ELEVE_FR.matieres.description}
-            </p>
-          </div>
-          <Link href="/demande-acces" className="shrink-0">
-            <Button type="button" variant="secondary" className="h-11 gap-2 bg-card">
-              <UserPlus aria-hidden="true" className="size-4" />
-              {ELEVE_FR.coquille.demanderAcces}
-            </Button>
-          </Link>
+        <div className="relative space-y-2">
+          <h1 className="text-h1 font-bold tracking-tight text-secondary-foreground">
+            {ELEVE_FR.matieres.titre}
+          </h1>
+          <p className="max-w-2xl text-body text-secondary-foreground/80">
+            {ELEVE_FR.matieres.description}
+          </p>
         </div>
       </header>
 

@@ -14,6 +14,7 @@
     "seed:admin": "node prisma/seed-admin.ts",
     "seed:exercices": "node scripts/seed-exercices-pc.ts",
     "seed:contenu": "node scripts/seed-contenu-demo.ts",
+    "seed:programme": "node scripts/seed-programme-reel.ts",
     "inventaire": "node scripts/inventaire-dev.ts",
     "menage:test": "node scripts/menage-donnees-test.ts",
     "postinstall": "prisma generate"

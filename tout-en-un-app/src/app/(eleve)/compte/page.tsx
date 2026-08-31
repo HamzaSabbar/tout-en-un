@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { BarChart3, BookOpen, Radio, Sparkles } from "lucide-react";
+import { CompteARebours } from "@/components/eleve/compte-a-rebours";
 import { COQUILLE_ELEVE } from "@/components/eleve/coquille";
 import { EtatVide } from "@/components/eleve/etat-vide";
 import { Button } from "@/components/ui/button";
@@ -7,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { ELEVE_FR } from "@/lib/i18n/eleve.fr";
 import { accorder } from "@/lib/pluriel";
 import { requireAuth } from "@/modules/acces/require-auth";
+import { obtenirCompteARebours } from "@/modules/parcours-eleve/compte-a-rebours";
 import {
   listerMatieresPourEleve,
   obtenirActiviteSemaine,
@@ -17,10 +19,11 @@ export default async function ComptePage() {
   const utilisateur = await requireAuth();
   const utilisateurId = BigInt(utilisateur.id);
 
-  const [matieres, reprise, activite] = await Promise.all([
+  const [matieres, reprise, activite, compteARebours] = await Promise.all([
     listerMatieresPourEleve(utilisateurId),
     obtenirRepriseGlobale(utilisateurId),
     obtenirActiviteSemaine(utilisateurId),
+    obtenirCompteARebours(),
   ]);
   const aDeLActivite = activite.nbCoursActifs > 0 || activite.nbExercicesTraites > 0;
 
@@ -116,6 +119,8 @@ export default async function ComptePage() {
         </section>
 
         <div className="space-y-6">
+          <CompteARebours donnees={compteARebours} />
+
           <section aria-labelledby="semaine-titre" className="space-y-3">
             <h2 id="semaine-titre" className="text-h3 font-semibold">
               {ELEVE_FR.accueil.semaine.titre}

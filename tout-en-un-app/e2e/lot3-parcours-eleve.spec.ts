@@ -214,9 +214,11 @@ test("un élève abonné parcourt une matière complète sur mobile sans fuite m
   await page.getByRole("link", { name: new RegExp(fixture.matiere.libelle) }).click();
   // Chaque carte du tableau de bord affiche désormais un message d'état vide
   // spécifique (pas un « Pas encore disponible » générique répété) : on
-  // vérifie que les quatre cartes existent et qu'aucune n'est restée vide.
+  // vérifie que les trois cartes existent et qu'aucune n'est restée vide.
+  // Le compte à rebours du national (quatrième carte à l'origine) vit
+  // maintenant sur l'accueil, pas dans le tableau de bord d'une matière.
   const cartesTableauDeBord = page.locator("[data-dashboard-card]");
-  await expect(cartesTableauDeBord).toHaveCount(4);
+  await expect(cartesTableauDeBord).toHaveCount(3);
   for (const carte of await cartesTableauDeBord.all()) {
     await expect(carte.locator("p")).not.toBeEmpty();
   }

@@ -10,6 +10,7 @@ import * as videoService from "@/modules/contenu/video";
 import * as documentService from "@/modules/contenu/document";
 import * as extraitNationalService from "@/modules/contenu/extrait-national";
 import * as examenNationalService from "@/modules/contenu/examen-national";
+import * as parametreService from "@/modules/contenu/parametre";
 import * as exerciceService from "@/modules/exercice/service";
 import {
   invaliderChapitre,
@@ -634,4 +635,18 @@ export async function depublierExamenNationalAction(formData: FormData): Promise
     BigInt(formData.get("examen_id") as string),
   );
   invaliderExamensNationaux(matiereId);
+}
+
+// --- Paramètres ---
+
+export async function definirDateExamenNationalAction(
+  _prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  await requirePermission("contenu:gerer");
+  const resultat = await parametreService.definirDateExamenNational(champsFormulaire(formData));
+  if (!resultat.succes) {
+    return { erreur: resultat.erreur };
+  }
+  return {};
 }

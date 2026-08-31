@@ -25,6 +25,7 @@ vi.mock("@/modules/contenu/video", () => ({}));
 vi.mock("@/modules/contenu/document", () => ({}));
 vi.mock("@/modules/contenu/extrait-national", () => ({}));
 vi.mock("@/modules/contenu/examen-national", () => ({}));
+vi.mock("@/modules/contenu/parametre", () => ({}));
 vi.mock("@/modules/exercice/service", () => ({}));
 vi.mock("@/modules/parcours-eleve/invalidation", () => ({
   invaliderChapitre: vi.fn(),

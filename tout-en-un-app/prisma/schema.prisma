@@ -558,3 +558,17 @@ model JournalAdmin {
   @@index([utilisateur_id, cree_le])
   @@map("journal_admin")
 }
+
+// Une seule ligne vivante (id fixe 1, gérée par upsert côté service) : la
+// date du prochain national, affichée en compte à rebours sur l'accueil élève
+// et modifiable par l'admin. Pas d'historique nécessaire, l'admin la remplace
+// chaque année.
+model DateExamenNational {
+  id         BigInt   @id @default(autoincrement())
+  date       DateTime
+  libelle    String
+  cree_le    DateTime @default(now())
+  modifie_le DateTime @updatedAt
+
+  @@map("date_examen_national")
+}

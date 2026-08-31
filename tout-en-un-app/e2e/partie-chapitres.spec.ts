@@ -5,10 +5,13 @@ import { hashPassword } from "@/lib/auth/password";
 import { nettoyerDonneesE2E, PREFIXE_E2E } from "./support/base-test";
 
 // Certaines matières (Physique-Chimie) regroupent leurs chapitres par partie
-// (Physique / Chimie) ; d'autres (Mathématiques) n'en ont aucune et gardent
-// l'affichage plat. Deux scénarios : le premier prouve le regroupement de bout
-// en bout (back-office réel, formulaire de création de chapitre avec sélecteur
-// de partie), le second prouve la non-régression pour une matière sans partie.
+// (Physique / Chimie) : côté élève, la matière propose un choix de partie
+// (comme le choix de matière), et seule la partie ouverte affiche ses
+// chapitres. D'autres matières (Mathématiques) n'ont aucune partie et gardent
+// l'affichage plat. Deux scénarios : le premier prouve l'écran de choix de
+// bout en bout (back-office réel, formulaire de création de chapitre avec
+// sélecteur de partie), le second prouve la non-régression pour une matière
+// sans partie.
 
 const MOT_DE_PASSE = "mot-de-passe-eleve-123";
 
@@ -109,12 +112,19 @@ test("un chapitre affecté à une partie apparaît groupé sous elle côté él�
   await expect(ligneChapitre).toBeVisible();
   await ligneChapitre.getByRole("button", { name: "Publier", exact: true }).click();
 
-  // Côté élève : le chapitre apparaît sous le titre de sa partie, pas à plat.
+  // Côté élève : la matière propose un choix de partie, pas les chapitres à
+  // plat. Choisir « Physique » mène à une page qui n'affiche que ses
+  // chapitres.
   await connecter(page, emailEleve);
   await page.goto(`/matieres/${matiere.id}`);
-  await expect(page.getByRole("heading", { name: "Physique", exact: true })).toBeVisible();
-  const carteChapitre = page.getByRole("link", { name: /Les ondes/ });
-  await expect(carteChapitre).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Choisis une partie" })).toBeVisible();
+  const cartePartie = page.getByRole("link", { name: /^Ouvrir la partie : Physique$/ });
+  await expect(cartePartie).toBeVisible();
+  await expect(page.getByRole("link", { name: /Les ondes/ })).toHaveCount(0);
+
+  await cartePartie.click();
+  await expect(page).toHaveURL(/\/matieres\/\d+\/parties\/\d+$/);
+  await expect(page.getByRole("link", { name: /Les ondes/ })).toBeVisible();
 
   const chapitre = await prisma.chapitre.findFirstOrThrow({ where: { matiere_id: matiere.id } });
   expect(chapitre.partie_id).not.toBeNull();
@@ -149,7 +159,8 @@ test("une matière sans partie garde l'affichage plat (non-régression)", async 
 
   await connecter(page, emailEleve);
   await page.goto(`/matieres/${matiere.id}`);
-  // Aucun titre de partie, le chapitre apparaît directement.
-  await expect(page.getByRole("heading", { name: "Parties", exact: true })).toHaveCount(0);
+  // Aucun écran de choix de partie, le chapitre apparaît directement.
+  await expect(page.getByRole("heading", { name: "Choisis une partie" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Chapitres", exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: /Limites et continuité/ })).toBeVisible();
 });
