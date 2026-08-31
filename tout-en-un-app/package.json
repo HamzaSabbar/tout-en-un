@@ -15,6 +15,7 @@
     "seed:exercices": "node scripts/seed-exercices-pc.ts",
     "seed:contenu": "node scripts/seed-contenu-demo.ts",
     "seed:programme": "node scripts/seed-programme-reel.ts",
+    "seed:exercices-ondes": "node scripts/seed-exercices-ondes-mecaniques.ts",
     "inventaire": "node scripts/inventaire-dev.ts",
     "menage:test": "node scripts/menage-donnees-test.ts",
     "postinstall": "prisma generate"
