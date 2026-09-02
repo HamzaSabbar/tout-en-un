@@ -9,6 +9,7 @@ import { ExerciceActions } from "@/components/eleve/exercice-actions";
 import { ExerciceCarte } from "@/components/eleve/exercice-carte";
 import { IndicateurDifficulte } from "@/components/eleve/indicateur-difficulte";
 import { BarreOngletsCours, PanneauOnglet } from "@/components/eleve/onglets-cours";
+import { PasserTest } from "@/components/eleve/passer-test";
 import { VideoFacade } from "@/components/eleve/video-facade";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,6 +22,7 @@ import { verifierAccesMatiere } from "@/modules/acces/acces-matiere";
 import { requireAuth } from "@/modules/acces/require-auth";
 import { obtenirEnoncesExercices } from "@/modules/exercice/service";
 import { obtenirPageCoursEnCache } from "@/modules/parcours-eleve/cache";
+import { aUneTentativeTerminee } from "@/modules/test/tentative";
 
 interface CoursPageProps {
   params: Promise<{ matiereId: string; chapitreId: string; coursId: string }>;
@@ -53,6 +55,13 @@ export default async function CoursPage({ params }: CoursPageProps) {
     obtenirEnoncesExercices(matiereId, coursId),
   ]);
   if (!cours) notFound();
+
+  // Lu à part du cache partagé : propre à cet élève, un cache commun
+  // livrerait le badge « À faire » d'un autre. Rien à demander si aucun
+  // test n'est publié pour ce cours.
+  const dejaTermine = cours.test
+    ? await aUneTentativeTerminee(BigInt(utilisateur.id), matiereId, coursId)
+    : false;
 
   const documentsCours = cours.documents.filter((document) => TYPES_DOCUMENT_COURS.has(document.type));
   const documentsExercices = cours.documents.filter((document) => !TYPES_DOCUMENT_COURS.has(document.type));
@@ -272,6 +281,22 @@ export default async function CoursPage({ params }: CoursPageProps) {
               </ul>
             )}
           </PanneauOnglet>
+
+          {/* Pas un cinquième onglet : ce n'est pas une ressource du même type
+              que vidéos/documents/exercices/extraits, plutôt un point de
+              passage indépendant, comme le lien Examens nationaux au niveau
+              de la matière. */}
+          {cours.test && (
+            <PasserTest
+              matiereId={matiereId.toString()}
+              chapitreId={chapitreId.toString()}
+              coursId={coursId.toString()}
+              titre={cours.test.titre}
+              dureeMinutes={cours.test.dureeMinutes}
+              nbQuestions={cours.test.nbQuestions}
+              dejaTermine={dejaTermine}
+            />
+          )}
 
           {(precedent || suivant) && (
             <nav aria-label="Navigation entre cours" className="flex items-center justify-between gap-4 border-t pt-6">

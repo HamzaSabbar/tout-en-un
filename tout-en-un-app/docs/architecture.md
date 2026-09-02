@@ -188,8 +188,9 @@ src/
     api/               points d'entrée REST et webhooks
   modules/
     acces/             règle d'accès matière, rôles, permissions
-    contenu/           matières, chapitres, cours, médias
-    evaluation/        exercices, extraits, examens, tests
+    contenu/           matières, chapitres, cours, médias, extraits, examens
+    exercice/          exercices (lot 4)
+    test/              tests de fin de cours (lot 6)
     progression/       événements et agrégats
     live/              lives et replays
     support/           questions et messages

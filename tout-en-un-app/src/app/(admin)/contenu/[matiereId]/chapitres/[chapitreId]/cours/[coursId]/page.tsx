@@ -1,10 +1,12 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { ChevronRight } from "lucide-react";
 import { obtenirCours } from "@/modules/contenu/cours";
 import { listerVideos } from "@/modules/contenu/video";
 import { listerDocumentsCours } from "@/modules/contenu/document";
 import { listerExercices } from "@/modules/exercice/service";
 import { listerExtraitsNationaux } from "@/modules/contenu/extrait-national";
+import { obtenirTestAdmin } from "@/modules/test/service";
 import {
   depublierDocumentAction,
   depublierExerciceAction,
@@ -35,11 +37,12 @@ export default async function CoursDetailPage({
     notFound();
   }
 
-  const [videos, documents, exercices, extraitsNationaux] = await Promise.all([
+  const [videos, documents, exercices, extraitsNationaux, test] = await Promise.all([
     listerVideos(cours.id),
     listerDocumentsCours(cours.id),
     listerExercices(cours.id),
     listerExtraitsNationaux(cours.id),
+    obtenirTestAdmin(cours.id),
   ]);
 
   return (
@@ -272,6 +275,24 @@ export default async function CoursDetailPage({
           chapitreId={chapitreId}
           coursId={coursId}
         />
+      </section>
+
+      <section className="flex flex-col gap-4">
+        <h2 className="text-lg font-medium">Test de fin de cours</h2>
+        <Link
+          href={`/contenu/${matiereId}/chapitres/${chapitreId}/cours/${coursId}/test`}
+          className="flex items-center justify-between rounded-lg border p-4 hover:bg-muted"
+        >
+          <div>
+            <p className="font-medium">{test ? test.titre : "Aucun test pour l'instant"}</p>
+            <p className="text-sm text-muted-foreground">
+              {test
+                ? `${test.statut} · ${test.duree_minutes} min · seuil ${test.seuil_validation} %`
+                : "Créer le test QCM chronométré de ce cours"}
+            </p>
+          </div>
+          <ChevronRight aria-hidden="true" className="size-5 text-muted-foreground" />
+        </Link>
       </section>
     </div>
   );

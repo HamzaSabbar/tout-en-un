@@ -163,6 +163,30 @@ export async function nettoyerDonneesE2E(): Promise<void> {
       ],
     },
   });
+  // Avant les cours : `test` (RESTRICT sur `cours_id`) et toute sa chaîne
+  // enfant doivent être vidés avant `cours.deleteMany` plus bas (lot 6).
+  // `tentative_test` référence aussi `utilisateur` (RESTRICT), donc cette
+  // suppression doit aussi précéder `utilisateur.deleteMany`.
+  const testsQcm = await prisma.test.findMany({
+    where: { cours_id: { in: coursIds } },
+    select: { id: true },
+  });
+  const testIds = testsQcm.map((testQcm) => testQcm.id);
+  const questionsTest = await prisma.questionTest.findMany({
+    where: { test_id: { in: testIds } },
+    select: { id: true },
+  });
+  const questionTestIds = questionsTest.map((question) => question.id);
+  await prisma.reponseTentative.deleteMany({
+    where: { question_test_id: { in: questionTestIds } },
+  });
+  await prisma.tentativeTest.deleteMany({ where: { test_id: { in: testIds } } });
+  await prisma.optionReponse.deleteMany({
+    where: { question_test_id: { in: questionTestIds } },
+  });
+  await prisma.questionTest.deleteMany({ where: { test_id: { in: testIds } } });
+  await prisma.test.deleteMany({ where: { id: { in: testIds } } });
+
   await prisma.exercice.deleteMany({ where: { cours_id: { in: coursIds } } });
   await prisma.video.deleteMany({ where: { cours_id: { in: coursIds } } });
   await prisma.cours.deleteMany({ where: { id: { in: coursIds } } });
@@ -223,6 +247,7 @@ export async function compterResiduE2E(): Promise<number> {
     extraitsNationaux,
     examensNationaux,
     parties,
+    tests,
   ] = await Promise.all([
     prisma.utilisateur.count({
       where: { email: { startsWith: PREFIXE_E2E.toLowerCase() } },
@@ -246,6 +271,9 @@ export async function compterResiduE2E(): Promise<number> {
     // rattachée à une matière de test par construction, comme les deux
     // précédentes.
     prisma.partie.count({ where: { matiere_id: { in: matiereIdsE2E } } }),
+    // `test` n'a pas de `matiere_id` direct (seulement `cours_id`) : rattaché
+    // à une matière de test par construction, même motif (lot 6).
+    prisma.test.count({ where: { cours: { chapitre: { matiere_id: { in: matiereIdsE2E } } } } }),
   ]);
   return (
     utilisateurs +
@@ -258,6 +286,7 @@ export async function compterResiduE2E(): Promise<number> {
     evenements +
     extraitsNationaux +
     examensNationaux +
-    parties
+    parties +
+    tests
   );
 }
