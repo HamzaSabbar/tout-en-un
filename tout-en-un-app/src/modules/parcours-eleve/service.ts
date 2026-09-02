@@ -374,17 +374,38 @@ export async function obtenirPageCoursPubliee(
           correction_document_id: true,
         },
       },
+      // Résumé léger seulement : jamais les questions (invariant 4), voir
+      // `test/service.ts` (`obtenirTestPublie`, même condition de visibilité,
+      // dupliquée ici pour rester dans l'agrégat mis en cache d'une seule
+      // requête plutôt que d'en ajouter une seconde).
+      test: {
+        where: { statut: "publie", supprime_le: null },
+        select: {
+          id: true,
+          titre: true,
+          duree_minutes: true,
+          _count: { select: { questions: { where: { supprime_le: null } } } },
+        },
+      },
     },
   });
   if (!cours) return null;
-  // `extraits_nationaux` est retiré du spread ci-dessous : contrairement à
-  // `exercices`/`videos`/`documents`, la version convertie est exposée sous un
-  // autre nom (`extraitsNationaux`), donc un simple `...cours` laisserait fuiter
-  // la ligne brute — BigInt compris — à côté de la version convertie, et
-  // `unstable_cache()` échoue à sérialiser le résultat.
-  const { extraits_nationaux, ...coursSansExtraitsBruts } = cours;
+  // `extraits_nationaux`/`test` sont retirés du spread ci-dessous : la
+  // version convertie de chacun est exposée sous un autre nom ou une autre
+  // forme, donc un simple `...cours` laisserait fuiter la ligne brute — BigInt
+  // compris — à côté de la version convertie, et `unstable_cache()` échoue à
+  // sérialiser le résultat.
+  const { extraits_nationaux, test, ...coursSansExtraitsBruts } = cours;
   return {
     ...coursSansExtraitsBruts,
+    test: test
+      ? {
+          id: test.id.toString(),
+          titre: test.titre,
+          dureeMinutes: test.duree_minutes,
+          nbQuestions: test._count.questions,
+        }
+      : null,
     id: cours.id.toString(),
     chapitre: {
       ...cours.chapitre,

@@ -78,6 +78,12 @@ describe("requête agrégée de la page de cours", () => {
           correction_document_id: null,
         },
       ],
+      test: {
+        id: BigInt(90),
+        titre: "Teste ta compréhension du cours",
+        duree_minutes: 15,
+        _count: { questions: 6 },
+      },
     });
 
     const resultat = await obtenirPageCoursPubliee(BigInt(10), BigInt(20), BigInt(30));
@@ -116,6 +122,7 @@ describe("requête agrégée de la page de cours", () => {
           correctionVideoDisponible: false,
         },
       ],
+      test: { id: "90", titre: "Teste ta compréhension du cours", dureeMinutes: 15, nbQuestions: 6 },
     });
     // Le champ brut ne doit pas fuiter à côté de sa version convertie : sinon
     // le résultat contient un BigInt, ce que `unstable_cache()` ne sait pas
@@ -123,6 +130,35 @@ describe("requête agrégée de la page de cours", () => {
     // test unitaire — d'où cette garde explicite).
     expect(resultat).not.toHaveProperty("extraits_nationaux");
     expect(() => JSON.stringify(resultat)).not.toThrow();
+  });
+
+  it("rend test: null quand aucun test n'est publié pour ce cours (résumé léger, jamais les questions)", async () => {
+    findFirstCours.mockResolvedValue({
+      id: BigInt(30),
+      titre: "Cinématique",
+      description: null,
+      chapitre: {
+        id: BigInt(20),
+        libelle: "Mécanique",
+        matiere: { id: BigInt(10), libelle: "Physique" },
+        partie: null,
+        cours: [],
+      },
+      videos: [],
+      documents: [],
+      exercices: [],
+      extraits_nationaux: [],
+      test: null,
+    });
+
+    const resultat = await obtenirPageCoursPubliee(BigInt(10), BigInt(20), BigInt(30));
+
+    expect(resultat?.test).toBeNull();
+    const requete = findFirstCours.mock.calls[0][0];
+    // Jamais les questions dans cette requête agrégée (invariant 4) : juste
+    // de quoi afficher le bouton.
+    expect(requete.select.test.select).not.toHaveProperty("questions");
+    expect(requete.select.test.where).toEqual({ statut: "publie", supprime_le: null });
   });
 
   it("filtre brouillons et suppressions dans la requête imbriquée", async () => {

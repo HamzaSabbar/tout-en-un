@@ -12,6 +12,7 @@ import * as extraitNationalService from "@/modules/contenu/extrait-national";
 import * as examenNationalService from "@/modules/contenu/examen-national";
 import * as parametreService from "@/modules/contenu/parametre";
 import * as exerciceService from "@/modules/exercice/service";
+import * as testService from "@/modules/test/service";
 import {
   invaliderChapitre,
   invaliderCours,
@@ -649,4 +650,88 @@ export async function definirDateExamenNationalAction(
     return { erreur: resultat.erreur };
   }
   return {};
+}
+
+// --- Test de fin de cours ---
+
+export async function creerTestAction(
+  _prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  await requirePermission("contenu:gerer");
+  const resultat = await testService.creerTest(champsFormulaire(formData));
+  if (!resultat.succes) {
+    return { erreur: resultat.erreur };
+  }
+  invaliderCours(
+    BigInt(formData.get("matiere_id") as string),
+    BigInt(formData.get("chapitre_id") as string),
+    BigInt(formData.get("cours_id") as string),
+  );
+  return {};
+}
+
+export async function publierTestAction(formData: FormData): Promise<void> {
+  await requirePermission("contenu:gerer");
+  const matiereId = BigInt(formData.get("matiere_id") as string);
+  const chapitreId = BigInt(formData.get("chapitre_id") as string);
+  const coursId = BigInt(formData.get("cours_id") as string);
+  await testService.publierTest(BigInt(formData.get("test_id") as string));
+  invaliderCours(matiereId, chapitreId, coursId);
+}
+
+export async function depublierTestAction(formData: FormData): Promise<void> {
+  await requirePermission("contenu:gerer");
+  const matiereId = BigInt(formData.get("matiere_id") as string);
+  const chapitreId = BigInt(formData.get("chapitre_id") as string);
+  const coursId = BigInt(formData.get("cours_id") as string);
+  await testService.depublierTest(BigInt(formData.get("test_id") as string));
+  invaliderCours(matiereId, chapitreId, coursId);
+}
+
+export async function creerQuestionTestAction(
+  _prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  await requirePermission("contenu:gerer");
+  const resultat = await testService.creerQuestionTest(champsFormulaire(formData));
+  if (!resultat.succes) {
+    return { erreur: resultat.erreur };
+  }
+  invaliderCours(
+    BigInt(formData.get("matiere_id") as string),
+    BigInt(formData.get("chapitre_id") as string),
+    BigInt(formData.get("cours_id") as string),
+  );
+  return {};
+}
+
+export async function supprimerQuestionTestAction(formData: FormData): Promise<void> {
+  await requirePermission("contenu:gerer");
+  const matiereId = BigInt(formData.get("matiere_id") as string);
+  const chapitreId = BigInt(formData.get("chapitre_id") as string);
+  const coursId = BigInt(formData.get("cours_id") as string);
+  await testService.supprimerQuestionTest(BigInt(formData.get("question_id") as string));
+  invaliderCours(matiereId, chapitreId, coursId);
+}
+
+export async function deplacerQuestionTestAction(formData: FormData): Promise<void> {
+  await requirePermission("contenu:gerer");
+  const matiereId = BigInt(formData.get("matiere_id") as string);
+  const chapitreId = BigInt(formData.get("chapitre_id") as string);
+  const coursId = BigInt(formData.get("cours_id") as string);
+  const testId = BigInt(formData.get("test_id") as string);
+  const questionId = BigInt(formData.get("question_id") as string);
+  const direction = formData.get("direction") as "monter" | "descendre";
+
+  const questions = await testService.listerQuestionsTest(testId);
+  const ids = questions.map((question) => question.id);
+  const index = ids.findIndex((id) => id === questionId);
+  const cible = direction === "monter" ? index - 1 : index + 1;
+  if (index === -1 || cible < 0 || cible >= ids.length) {
+    return;
+  }
+  [ids[index], ids[cible]] = [ids[cible], ids[index]];
+  await testService.reordonnerQuestionsTest(ids);
+  invaliderCours(matiereId, chapitreId, coursId);
 }

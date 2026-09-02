@@ -296,10 +296,11 @@ téléchargement : le droit de téléchargement générique
 l'évolution du schéma des offres, donc les PDF nationaux ont leur propre
 routes de lecture dédiées plutôt que de dépendre de ce droit.
 
-Écart connu, hors périmètre assumé : la carte tableau de bord « compte à
-rebours du national », que le lot 3 rattachait à ce lot, dépend d'une table
-`parametre` qui n'existe pas encore (prévue au lot 7). `obtenirDateNational()`
-reste donc à `{ etat: "indisponible" }`.
+Le compte à rebours du national, que le lot 3 rattachait initialement à ce
+lot via une future table `parametre`, a finalement été implémenté hors lots
+(voir la note du lot 3) : `DateExamenNational` (ligne unique, admin-éditable
+depuis `/parametres`), affiché sur l'accueil élève et non plus sur une page
+matière.
 
 Architecture : sections 5.3, 8.
 
@@ -310,18 +311,50 @@ Architecture : sections 5.3, 8.
 6 j, haute. Permettre à l'élève de valider un cours et alimenter la carte
 dernière note.
 
-- [ ] Types `qcm` et `vrai_faux` au MVP. `reponse_courte` modélisée mais
+- [x] Types `qcm` et `vrai_faux` au MVP. `reponse_courte` modélisée mais
       désactivée
-- [ ] Envoi des questions **sans** le champ `est_correcte`
-- [ ] Sauvegarde progressive des réponses, résistante à une coupure réseau
-- [ ] Correction intégralement côté serveur, comparaison au `seuil_validation`
-- [ ] Restitution : score, réponses justes et fausses, explication par question,
+- [x] Envoi des questions **sans** le champ `est_correcte`
+- [x] Sauvegarde progressive des réponses, résistante à une coupure réseau
+- [x] Correction intégralement côté serveur, comparaison au `seuil_validation`
+- [x] Restitution : score, réponses justes et fausses, explication par question,
       mention cours validé ou à revoir
-- [ ] Émission d'un `evenement_apprentissage` à la soumission
+- [x] Émission d'un `evenement_apprentissage` à la soumission
 
 **Critère de sortie.** Un test se passe et se corrige sans qu'aucune bonne
 réponse soit présente dans les réponses réseau avant soumission. Un test
 interrompu puis reprise conserve les réponses déjà saisies.
+
+Prouvé par `src/modules/test/tentative.test.ts` (garde explicite : la requête
+de démarrage/reprise ne sélectionne jamais `est_correcte`, ni dans la requête
+Prisma ni dans la sérialisation réseau ; reprise d'une tentative interrompue,
+sans duplication) et `src/modules/test/service.test.ts`, ainsi qu'une
+vérification manuelle de bout en bout (back-office → passage chronométré →
+restitution).
+
+**Un test par cours au MVP** (`test.cours_id` unique en base), pas un par
+section : le professeur mélange librement questions de cours et questions
+type examen national dans le même test. Le champ `image_fichier_id` de
+`question_test` reste modélisé mais non câblé (pas d'upload d'image proposé
+dans le formulaire d'auteur), même statut que `reponse_courte`.
+
+Les options d'un QCM sont saisies dans cinq emplacements fixes (A à E) plutôt
+que dans une liste ajoutable dynamiquement, cohérent avec le reste des
+formulaires du back-office. Le chrono élève (`src/components/eleve/passer-test.tsx`)
+est le premier minuteur seconde par seconde de la plateforme, ancré sur une
+date de fin absolue plutôt que sur un décompte, pour ne pas dériver si
+l'onglet est mis en veille. Il n'est pas appliqué strictement côté serveur :
+une soumission tardive reste corrigée normalement (MVP, pas d'anti-triche sur
+le temps).
+
+Comme pour `evenement_apprentissage` au lot 4, seul le fait est écrit ici
+(`action: "test_valide"`, `valeur` = score en pourcentage, que le test soit
+réussi ou non — la réussite vit dans `tentative_test.valide`, pas dans le nom
+de l'action, faute d'un `test_echoue` dans l'énumération). Les tables
+d'agrégat (`progression_cours` et la carte « dernière note » elle-même)
+restent au lot 7, qui dérivera aussi le badge « À faire » du test depuis ce
+même journal plutôt que depuis une lecture dédiée si le besoin de
+performance l'exige — la lecture actuelle (`aUneTentativeTerminee`) reste une
+requête ciblée par élève, hors du cache partagé de la page de cours.
 
 Architecture : sections 5.3, 9.
 

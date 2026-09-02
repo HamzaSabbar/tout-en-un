@@ -38,6 +38,18 @@ enum TypeDocument {
   @@map("type_document")
 }
 
+// MVP limité à qcm et vrai_faux (roadmap, lot 6, hors périmètre §19) :
+// reponse_courte est modélisée pour ne pas migrer le schéma plus tard, mais
+// n'est jamais proposée par le formulaire d'admin — elle imposerait une
+// correction manuelle ou une normalisation de texte fragile.
+enum TypeQuestionTest {
+  qcm
+  vrai_faux
+  reponse_courte
+
+  @@map("type_question_test")
+}
+
 enum RessourceApprentissage {
   video
   exercice
@@ -120,6 +132,7 @@ model Utilisateur {
   demandes_traitees       DemandeMatiere[]         @relation("traitant")
   actions_admin           JournalAdmin[]
   evenements              EvenementApprentissage[]
+  tentatives_test         TentativeTest[]
 
   @@index([filiere_id])
   @@map("utilisateur")
@@ -276,6 +289,7 @@ model Cours {
   documents          Document[]
   exercices          Exercice[]
   extraits_nationaux ExtraitNational[]
+  test               Test?
 
   @@index([chapitre_id, statut, ordre])
   @@map("cours")
@@ -438,6 +452,105 @@ model Exercice {
 
   @@index([cours_id, statut, ordre])
   @@map("exercice")
+}
+
+// Un test par cours au MVP (architecture 5.3, hors périmètre §19 : plusieurs
+// tests par cours n'est pas construit). `cours_id` unique porte cette règle
+// au niveau base, pas seulement applicative.
+model Test {
+  id               BigInt    @id @default(autoincrement())
+  cours_id         BigInt    @unique
+  titre            String
+  consigne         String?
+  seuil_validation Int       @default(50)
+  duree_minutes    Int
+  statut           Statut    @default(brouillon)
+  cree_le          DateTime  @default(now())
+  supprime_le      DateTime?
+
+  cours      Cours           @relation(fields: [cours_id], references: [id])
+  questions  QuestionTest[]
+  tentatives TentativeTest[]
+
+  @@map("test")
+}
+
+// Pas de `statut` propre à la question : seul le test publie ou dépublie,
+// une question ajoutée à un test déjà publié est visible immédiatement.
+// `enonce`/`explication` réutilisent le même contenu riche que
+// `exercice.enonce` (`documentRicheSchema`, `src/modules/exercice/document-riche.ts`).
+model QuestionTest {
+  id               BigInt           @id @default(autoincrement())
+  test_id          BigInt
+  type             TypeQuestionTest @default(qcm)
+  enonce           Json
+  image_fichier_id BigInt?
+  points           Int              @default(1)
+  explication      Json?
+  ordre            Int              @default(0)
+  cree_le          DateTime         @default(now())
+  supprime_le      DateTime?
+
+  test     Test               @relation(fields: [test_id], references: [id])
+  options  OptionReponse[]
+  reponses ReponseTentative[]
+
+  @@index([test_id, ordre])
+  @@map("question_test")
+}
+
+model OptionReponse {
+  id               BigInt  @id @default(autoincrement())
+  question_test_id BigInt
+  libelle          String
+  est_correcte     Boolean @default(false)
+  ordre            Int     @default(0)
+
+  question QuestionTest @relation(fields: [question_test_id], references: [id])
+
+  @@index([question_test_id, ordre])
+  @@map("option_reponse")
+}
+
+// Retentatives autorisées, sans limite : comme le reste du journal
+// d'apprentissage, la plus récente fait foi pour « dernière note ». Une
+// tentative `termine_le: null` est reprise, jamais dupliquée (critère de
+// sortie du lot 6 : une coupure réseau ne fait rien perdre).
+model TentativeTest {
+  id             BigInt    @id @default(autoincrement())
+  test_id        BigInt
+  utilisateur_id BigInt
+  score          Int?
+  score_max      Int?
+  valide         Boolean?
+  demarre_le     DateTime  @default(now())
+  termine_le     DateTime?
+
+  test        Test               @relation(fields: [test_id], references: [id])
+  utilisateur Utilisateur        @relation(fields: [utilisateur_id], references: [id])
+  reponses    ReponseTentative[]
+
+  @@index([test_id, utilisateur_id])
+  @@map("tentative_test")
+}
+
+// `option_id` reste nullable tant que la question n'a pas encore de réponse
+// enregistrée. `correcte` reste `null` jusqu'à la soumission : rien n'est
+// corrigé avant, la correction se fait entièrement au moment de
+// `soumettreTentative` (invariant 4, aucune bonne réponse avant soumission).
+model ReponseTentative {
+  id               BigInt   @id @default(autoincrement())
+  tentative_id     BigInt
+  question_test_id BigInt
+  option_id        BigInt?
+  correcte         Boolean?
+  cree_le          DateTime @default(now())
+
+  tentative TentativeTest @relation(fields: [tentative_id], references: [id])
+  question  QuestionTest  @relation(fields: [question_test_id], references: [id])
+
+  @@unique([tentative_id, question_test_id])
+  @@map("reponse_tentative")
 }
 
 // Journal immuable de l'activité d'apprentissage (architecture 5.5). Créé au
