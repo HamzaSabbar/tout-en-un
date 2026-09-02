@@ -110,15 +110,18 @@ export function CreerExerciceForm({
           </div>
 
           <div className="flex flex-col gap-2">
-            <Label htmlFor="exercice-difficulte">Difficulté (1 à 5)</Label>
-            <Input
-              id="exercice-difficulte"
-              name="difficulte"
-              type="number"
-              min={1}
-              max={5}
-              defaultValue={3}
-            />
+            <Label htmlFor="exercice-categorie">Catégorie</Label>
+            <select
+              id="exercice-categorie"
+              name="categorie"
+              required
+              defaultValue="comprehension"
+              className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm"
+            >
+              <option value="comprehension">Exercices de compréhension</option>
+              <option value="type_bac">Exercices type bac</option>
+              <option value="approfondissement">Exercices d&apos;approfondissement</option>
+            </select>
           </div>
 
           {state.erreur && <p className="text-sm text-destructive">{state.erreur}</p>}

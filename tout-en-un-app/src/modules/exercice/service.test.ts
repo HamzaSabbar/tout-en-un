@@ -68,18 +68,14 @@ describe("creerExercice", () => {
     expect(createExercice).not.toHaveBeenCalled();
   });
 
-  // La même borne existe en contrainte CHECK : le schéma permet de répondre
-  // « formulaire invalide » au lieu de laisser PostgreSQL lever.
-  it("refuse une difficulté hors de l'intervalle 1 à 5", async () => {
-    for (const difficulte of ["0", "6"]) {
-      const resultat = await creerExercice({
-        cours_id: "1",
-        titre: "Exercice 1",
-        enonce: ENONCE,
-        difficulte,
-      });
-      expect(resultat.succes).toBe(false);
-    }
+  it("refuse une catégorie hors du jeu fermé compréhension/type bac/approfondissement", async () => {
+    const resultat = await creerExercice({
+      cours_id: "1",
+      titre: "Exercice 1",
+      enonce: ENONCE,
+      categorie: "impossible",
+    });
+    expect(resultat.succes).toBe(false);
     expect(createExercice).not.toHaveBeenCalled();
   });
 
@@ -97,7 +93,6 @@ describe("creerExercice", () => {
       aide: "",
       correction_texte: "",
       correction_video_ref: "",
-      difficulte: "",
       ordre: "",
     });
 
@@ -106,7 +101,7 @@ describe("creerExercice", () => {
     expect(donnees.correction_video_ref).toBeUndefined();
     // Les valeurs par défaut jouent, au lieu d'échouer sur un 0 issu de la
     // conversion de la chaîne vide.
-    expect(donnees.difficulte).toBe(3);
+    expect(donnees.categorie).toBe("comprehension");
     expect(donnees.ordre).toBe(0);
   });
 
@@ -120,7 +115,7 @@ describe("creerExercice", () => {
     expect(resultat.succes).toBe(false);
   });
 
-  it("crée un exercice valide en brouillon, difficulté 3 par défaut", async () => {
+  it("crée un exercice valide en brouillon, catégorie compréhension par défaut", async () => {
     createExercice.mockResolvedValue({ id: BigInt(7) });
 
     const resultat = await creerExercice({
@@ -132,7 +127,7 @@ describe("creerExercice", () => {
     expect(resultat).toEqual({ succes: true, id: "7" });
     const donnees = createExercice.mock.calls[0][0].data;
     expect(donnees.cours_id).toBe(BigInt(1));
-    expect(donnees.difficulte).toBe(3);
+    expect(donnees.categorie).toBe("comprehension");
     expect(donnees.enonce).toEqual({
       version: 1,
       noeuds: [{ type: "paragraphe", texte: "Calculer $v$." }],

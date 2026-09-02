@@ -30,7 +30,7 @@ import { documentRicheSchema } from "../src/modules/exercice/document-riche.ts";
 
 interface ExerciceSeme {
   titre: string;
-  difficulte: number;
+  categorie: "comprehension" | "type_bac" | "approfondissement";
   ordre: number;
   enonce: unknown;
   aide: unknown;
@@ -41,7 +41,7 @@ const EXERCICES: ExerciceSeme[] = [
   {
     // Partie 1 du programme : ondes et lumière.
     titre: "Ondes à la surface de l'eau : célérité et retard",
-    difficulte: 2,
+    categorie: "comprehension",
     ordre: 1,
     enonce: {
       version: 1,
@@ -115,7 +115,7 @@ const EXERCICES: ExerciceSeme[] = [
   {
     // Partie 3 du programme : électricité.
     titre: "Dipôle RC : charge d'un condensateur",
-    difficulte: 3,
+    categorie: "type_bac",
     ordre: 2,
     enonce: {
       version: 1,
@@ -188,7 +188,7 @@ const EXERCICES: ExerciceSeme[] = [
   {
     // Partie 2 du programme : chimie générale, suivi temporel.
     titre: "Cinétique : attaque du zinc par l'acide chlorhydrique",
-    difficulte: 3,
+    categorie: "type_bac",
     ordre: 3,
     enonce: {
       version: 1,
@@ -375,7 +375,7 @@ async function principal(): Promise<void> {
           enonce: exercice.enonce as object,
           aide: exercice.aide as object,
           correction_texte: exercice.correction_texte as object,
-          difficulte: exercice.difficulte,
+          categorie: exercice.categorie,
           ordre: exercice.ordre,
         },
         select: { id: true },

@@ -64,7 +64,7 @@ describe("requête agrégée de la page de cours", () => {
       documents: [
         { id: BigInt(50), titre: "Cours PDF", type: "cours_pdf", fichier: { taille: 2516582 } },
       ],
-      exercices: [{ id: BigInt(60), titre: "Chute libre", difficulte: 3 }],
+      exercices: [{ id: BigInt(60), titre: "Chute libre", categorie: "comprehension" }],
       extraits_nationaux: [
         {
           id: BigInt(70),
@@ -111,7 +111,7 @@ describe("requête agrégée de la page de cours", () => {
       chapitre: { id: "20", matiere: { id: "10" }, partie: { id: "100", libelle: "Physique" } },
       videos: [{ id: "40" }],
       documents: [{ id: "50" }],
-      exercices: [{ id: "60", titre: "Chute libre", difficulte: 3 }],
+      exercices: [{ id: "60", titre: "Chute libre", categorie: "comprehension" }],
       extraitsNationaux: [
         {
           id: "70",

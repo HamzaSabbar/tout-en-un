@@ -25,6 +25,12 @@ import { CreerExerciceForm } from "./creer-exercice-form";
 import { CreerExtraitNationalForm } from "./creer-extrait-national-form";
 import { requirePermission } from "@/modules/acces/require-auth";
 
+const LIBELLES_CATEGORIE_EXERCICE = {
+  comprehension: "Compréhension",
+  type_bac: "Type bac",
+  approfondissement: "Approfondissement",
+} as const;
+
 export default async function CoursDetailPage({
   params,
 }: {
@@ -175,7 +181,7 @@ export default async function CoursDetailPage({
               <div>
                 <p className="font-medium">{exercice.titre}</p>
                 <p className="text-sm text-muted-foreground">
-                  Difficulté {exercice.difficulte}
+                  {LIBELLES_CATEGORIE_EXERCICE[exercice.categorie]}
                   {exercice.aide ? " · aide" : ""}
                   {exercice.correction_texte ? " · correction écrite" : ""}
                   {exercice.correction_video_ref ? " · correction vidéo" : ""}
