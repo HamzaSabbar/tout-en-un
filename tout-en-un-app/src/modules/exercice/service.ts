@@ -39,9 +39,7 @@ export const creerExerciceSchema = z.object({
       .regex(/^[A-Za-z0-9_-]{6,64}$/)
       .optional(),
   ),
-  // La borne est aussi une contrainte CHECK en base. Ici elle sert à répondre
-  // « formulaire invalide » plutôt qu'à laisser PostgreSQL lever.
-  difficulte: absentSiVide(z.coerce.number().int().min(1).max(5).default(3)),
+  categorie: z.enum(["comprehension", "type_bac", "approfondissement"]).default("comprehension"),
   ordre: absentSiVide(z.coerce.number().int().min(0).default(0)),
 });
 export type CreerExerciceInput = z.infer<typeof creerExerciceSchema>;
@@ -75,7 +73,7 @@ export async function creerExercice(input: unknown): Promise<Resultat> {
       aide: valeurJson(donnees.data.aide),
       correction_texte: valeurJson(donnees.data.correction_texte),
       correction_video_ref: donnees.data.correction_video_ref,
-      difficulte: donnees.data.difficulte,
+      categorie: donnees.data.categorie,
       ordre: donnees.data.ordre,
     },
   });
@@ -96,7 +94,7 @@ export async function modifierExercice(id: bigint, input: unknown): Promise<Resu
       aide: valeurJson(donnees.data.aide),
       correction_texte: valeurJson(donnees.data.correction_texte),
       correction_video_ref: donnees.data.correction_video_ref,
-      difficulte: donnees.data.difficulte,
+      categorie: donnees.data.categorie,
       ordre: donnees.data.ordre,
     },
   });

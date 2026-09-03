@@ -69,7 +69,7 @@ exiger d'en violer une, arrête-toi et signale le conflit.
 La plateforme adresse les élèves de 2e année du Baccalauréat marocain, filières
 Sciences Physiques, SVT, Sciences Maths A et Sciences Maths B. Elle regroupe :
 cours structurés en grands chapitres, vidéos courtes, cours et résumés en PDF,
-exercices interactifs notés par difficulté, extraits et sujets complets des
+exercices interactifs classés par catégorie pédagogique, extraits et sujets complets des
 examens nationaux, tests, lives, replays, plan de travail personnel avec
 chronomètre, et un canal de support pédagogique question / réponse.
 
@@ -262,7 +262,7 @@ un cours entier sans qu'aucun élève ne le voie, puis publie en une action.
 
 | Table | Champs principaux | Relations |
 |---|---|---|
-| `exercice` | id, cours_id, titre, enonce (riche, LaTeX), difficulte (1 à 5), aide, correction_texte, correction_video_ref, ordre, statut | appartient à `cours` |
+| `exercice` | id, cours_id, titre, enonce (riche, LaTeX), categorie (comprehension / type_bac / approfondissement), aide, correction_texte, correction_video_ref, ordre, statut | appartient à `cours` |
 | `extrait_national` | id, matiere_id, chapitre_id, cours_id, annee, session, enonce, sujet_document_id, correction_document_id, correction_video_ref, duree_recommandee, difficulte, ordre, statut | relie un extrait au cours concerné |
 | `examen_national` | id, matiere_id, filiere_id, annee, session, sujet_document_id, correction_document_id, correction_video_ref, statut | examen complet, consultation par année |
 | `test` | id, cours_id, titre, consigne, seuil_validation, duree_minutes, statut | un test par cours au MVP |
@@ -379,8 +379,8 @@ correction_incomprise, erreur_suspectee, autre.
   le chemin de la statistique pédagogique de la section 9, « quelle proportion
   d'élèves ouvre l'aide de cet exercice », et celui de la dérivation de l'étape
   atteinte par un élève sur une ressource.
-- Contrainte `CHECK` sur `exercice.difficulte`, bornée à l'intervalle 1..5, et sur
-  `evenement_apprentissage.duree_secondes`, jamais négative. Elles sont écrites à
+- Contrainte `CHECK` sur `extrait_national.difficulte`, bornée à l'intervalle 1..5,
+  et sur `evenement_apprentissage.duree_secondes`, jamais négative. Elles sont écrites à
   la main dans la migration : le langage de schéma de Prisma ne les exprime pas, et
   il ignore celles qu'il trouve en base, donc elles ne sont pas prises pour une
   dérive.

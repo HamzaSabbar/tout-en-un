@@ -350,10 +350,14 @@ export async function obtenirPageCoursPubliee(
       },
       exercices: {
         where: { statut: "publie", supprime_le: null },
-        orderBy: [{ ordre: "asc" }, { id: "asc" }],
+        // L'ordre de déclaration de l'enum `categorie` fixe son ordre de tri
+        // PostgreSQL natif (compréhension < type bac < approfondissement) :
+        // trier dessus regroupe déjà les exercices par section d'affichage,
+        // sans regroupement supplémentaire côté serveur.
+        orderBy: [{ categorie: "asc" }, { ordre: "asc" }, { id: "asc" }],
         // Le contenu riche n'est pas sélectionné : la liste n'a besoin que des
         // libellés, et les énoncés complets traverseraient le cache pour rien.
-        select: { id: true, titre: true, difficulte: true },
+        select: { id: true, titre: true, categorie: true },
       },
       // Contrairement à l'énoncé riche d'un exercice, ces champs sont légers et
       // non personnalisés : ils rejoignent l'agrégat mis en cache plutôt que

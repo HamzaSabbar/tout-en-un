@@ -50,6 +50,21 @@ enum TypeQuestionTest {
   @@map("type_question_test")
 }
 
+// Remplace l'ancienne échelle de difficulté 1..5 (facile/moyen/difficile) : le
+// professeur classe un exercice par son rôle pédagogique plutôt que par son
+// niveau, et l'élève les parcourt dans cet ordre (compréhension d'abord,
+// approfondissement en dernier). L'ordre de déclaration fixe l'ordre de tri
+// PostgreSQL natif d'un enum, exploité par `orderBy: { categorie: "asc" }`
+// dans `parcours-eleve/service.ts` pour regrouper l'affichage sans requête ni
+// tri supplémentaire.
+enum CategorieExercice {
+  comprehension
+  type_bac
+  approfondissement
+
+  @@map("categorie_exercice")
+}
+
 enum RessourceApprentissage {
   video
   exercice
@@ -431,21 +446,19 @@ model ExamenNational {
 //
 // `cree_le` est non nullable, contrairement aux autres tables de contenu : leur
 // nullabilité vient des lignes antérieures à la migration, dont la date est
-// inconnue. Cette table est neuve, elle n'en a aucune. `difficulte` est bornée à
-// l'intervalle 1..5 par une contrainte CHECK ajoutée à la main dans la migration,
-// Prisma ne sachant pas l'exprimer.
+// inconnue. Cette table est neuve, elle n'en a aucune.
 model Exercice {
-  id                   BigInt    @id @default(autoincrement())
+  id                   BigInt            @id @default(autoincrement())
   cours_id             BigInt
   titre                String
   enonce               Json
   aide                 Json?
   correction_texte     Json?
   correction_video_ref String?
-  difficulte           Int       @default(3)
-  ordre                Int       @default(0)
-  statut               Statut    @default(brouillon)
-  cree_le              DateTime  @default(now())
+  categorie            CategorieExercice @default(comprehension)
+  ordre                Int               @default(0)
+  statut               Statut            @default(brouillon)
+  cree_le              DateTime          @default(now())
   supprime_le          DateTime?
 
   cours Cours @relation(fields: [cours_id], references: [id])

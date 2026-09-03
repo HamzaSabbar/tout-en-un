@@ -33,6 +33,11 @@ interface CoursPageProps {
 // `type` déjà en base, pas d'un nouveau champ.
 const TYPES_DOCUMENT_COURS = new Set(["cours_pdf", "resume_pdf"]);
 
+// Ordre d'affichage de l'onglet Exercices : compréhension d'abord,
+// approfondissement en dernier — le professeur classe par rôle pédagogique,
+// pas par niveau de difficulté.
+const ORDRE_CATEGORIES_EXERCICE = ["comprehension", "type_bac", "approfondissement"] as const;
+
 export default async function CoursPage({ params }: CoursPageProps) {
   const utilisateur = await requireAuth();
   const valeurs = await params;
@@ -62,6 +67,18 @@ export default async function CoursPage({ params }: CoursPageProps) {
   const dejaTermine = cours.test
     ? await aUneTentativeTerminee(BigInt(utilisateur.id), matiereId, coursId)
     : false;
+
+  // Regroupe les exercices, déjà triés par catégorie puis ordre côté serveur,
+  // en sections titrées. Une section vide n'est pas affichée.
+  const sectionsExercices = ORDRE_CATEGORIES_EXERCICE.map((categorie) => ({
+    categorie,
+    titre: {
+      comprehension: ELEVE_FR.exercice.sectionComprehension,
+      type_bac: ELEVE_FR.exercice.sectionTypeBac,
+      approfondissement: ELEVE_FR.exercice.sectionApprofondissement,
+    }[categorie],
+    exercices: cours.exercices.filter((exercice) => exercice.categorie === categorie),
+  })).filter((section) => section.exercices.length > 0);
 
   const documentsCours = cours.documents.filter((document) => TYPES_DOCUMENT_COURS.has(document.type));
   const documentsExercices = cours.documents.filter((document) => !TYPES_DOCUMENT_COURS.has(document.type));
@@ -177,38 +194,45 @@ export default async function CoursPage({ params }: CoursPageProps) {
                 texte={ELEVE_FR.ressources.aucunExerciceTexte}
               />
             ) : (
-              <ul className="space-y-4">
-                {cours.exercices.map((exercice) => (
-                  <li key={exercice.id} data-exercice-card={exercice.id}>
-                    <ExerciceCarte titre={exercice.titre} difficulte={exercice.difficulte}>
-                      <div className="rounded-lg border bg-muted/40 p-4">
-                        <p className="mb-2 flex items-center gap-2 text-body-sm font-semibold text-muted-foreground">
-                          <FileText aria-hidden="true" className="size-4" />
-                          {ELEVE_FR.exercice.enonce}
-                        </p>
-                        {(() => {
-                          const enonce = enonces.get(exercice.id);
-                          return enonce ? (
-                            <DocumentRicheVue
-                              document={enonce}
-                              baseUrlImages={`/api/matieres/${matiereId}/exercices/${exercice.id}/images`}
+              <div className="space-y-8">
+                {sectionsExercices.map((section) => (
+                  <div key={section.categorie} className="space-y-4">
+                    <h3 className="text-body-sm font-semibold text-muted-foreground">{section.titre}</h3>
+                    <ul className="space-y-4">
+                      {section.exercices.map((exercice) => (
+                        <li key={exercice.id} data-exercice-card={exercice.id}>
+                          <ExerciceCarte titre={exercice.titre}>
+                            <div className="rounded-lg border bg-muted/40 p-4">
+                              <p className="mb-2 flex items-center gap-2 text-body-sm font-semibold text-muted-foreground">
+                                <FileText aria-hidden="true" className="size-4" />
+                                {ELEVE_FR.exercice.enonce}
+                              </p>
+                              {(() => {
+                                const enonce = enonces.get(exercice.id);
+                                return enonce ? (
+                                  <DocumentRicheVue
+                                    document={enonce}
+                                    baseUrlImages={`/api/matieres/${matiereId}/exercices/${exercice.id}/images`}
+                                  />
+                                ) : (
+                                  <p className="text-muted-foreground">{ELEVE_FR.exercice.contenuIllisible}</p>
+                                );
+                              })()}
+                            </div>
+                            <ExerciceActions
+                              matiereId={matiereId.toString()}
+                              chapitreId={chapitreId.toString()}
+                              coursId={coursId.toString()}
+                              exerciceId={exercice.id}
+                              titre={exercice.titre}
                             />
-                          ) : (
-                            <p className="text-muted-foreground">{ELEVE_FR.exercice.contenuIllisible}</p>
-                          );
-                        })()}
-                      </div>
-                      <ExerciceActions
-                        matiereId={matiereId.toString()}
-                        chapitreId={chapitreId.toString()}
-                        coursId={coursId.toString()}
-                        exerciceId={exercice.id}
-                        titre={exercice.titre}
-                      />
-                    </ExerciceCarte>
-                  </li>
+                          </ExerciceCarte>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 ))}
-              </ul>
+              </div>
             )}
           </PanneauOnglet>
 

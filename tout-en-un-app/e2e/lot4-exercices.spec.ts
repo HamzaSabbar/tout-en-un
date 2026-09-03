@@ -251,7 +251,7 @@ test("un exercice créé au back-office est traité étape par étape sur la pag
   await formulaireExercice
     .getByLabel("Référence de la vidéo de correction (facultative)")
     .fill(REFERENCE_VIDEO);
-  await formulaireExercice.getByLabel("Difficulté (1 à 5)").fill("4");
+  await formulaireExercice.getByLabel("Catégorie").selectOption("type_bac");
   await formulaireExercice.getByRole("button", { name: "Ajouter" }).click();
 
   const ligneExercice = page.getByRole("listitem").filter({ hasText: titreExercice });

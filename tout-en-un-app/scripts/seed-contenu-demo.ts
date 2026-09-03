@@ -21,7 +21,7 @@ import { documentRicheSchema } from "../src/modules/exercice/document-riche.ts";
 
 interface ExerciceSeme {
   titre: string;
-  difficulte: number;
+  categorie: "comprehension" | "type_bac" | "approfondissement";
   enonce: unknown;
   aide: unknown;
   correction_texte: unknown;
@@ -62,7 +62,7 @@ const MATIERES: MatiereSeme[] = [
           description: "Lever une forme indéterminée par quantité conjuguée et étudier la continuité.",
           exercice: {
             titre: "Étude d'une fonction en x = 1",
-            difficulte: 3,
+            categorie: "type_bac",
             enonce: {
               version: 1,
               noeuds: [
@@ -131,7 +131,7 @@ const MATIERES: MatiereSeme[] = [
           description: "Étudier une fonction polynôme du troisième degré et résoudre f(x) = 0.",
           exercice: {
             titre: "Étude complète de f(x) = x³ − 3x + 2",
-            difficulte: 3,
+            categorie: "type_bac",
             enonce: {
               version: 1,
               noeuds: [
@@ -213,7 +213,7 @@ const MATIERES: MatiereSeme[] = [
           description: "Ramener une suite récurrente à une suite géométrique auxiliaire.",
           exercice: {
             titre: "Étude d'une suite définie par récurrence",
-            difficulte: 3,
+            categorie: "type_bac",
             enonce: {
               version: 1,
               noeuds: [
@@ -289,7 +289,7 @@ const MATIERES: MatiereSeme[] = [
           description: "Exploiter une photographie de la surface pour déterminer la célérité de l'onde.",
           exercice: {
             titre: "Ondes à la surface de l'eau : célérité et retard",
-            difficulte: 2,
+            categorie: "comprehension",
             enonce: {
               version: 1,
               noeuds: [
@@ -367,7 +367,7 @@ const MATIERES: MatiereSeme[] = [
           description: "Établir puis exploiter l'équation différentielle de la charge d'un condensateur.",
           exercice: {
             titre: "Dipôle RC : charge d'un condensateur",
-            difficulte: 3,
+            categorie: "type_bac",
             enonce: {
               version: 1,
               noeuds: [
@@ -440,7 +440,7 @@ const MATIERES: MatiereSeme[] = [
           description: "Exploiter un suivi de volume gazeux pour caractériser l'avancement d'une réaction.",
           exercice: {
             titre: "Cinétique : attaque du zinc par l'acide chlorhydrique",
-            difficulte: 3,
+            categorie: "type_bac",
             enonce: {
               version: 1,
               noeuds: [
@@ -686,7 +686,7 @@ async function principal(): Promise<void> {
               enonce: exerciceSeme.enonce as object,
               aide: exerciceSeme.aide as object,
               correction_texte: exerciceSeme.correction_texte as object,
-              difficulte: exerciceSeme.difficulte,
+              categorie: exerciceSeme.categorie,
               ordre: 0,
               statut: "publie",
             },

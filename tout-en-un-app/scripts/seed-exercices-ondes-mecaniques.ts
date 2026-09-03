@@ -20,7 +20,7 @@ import { documentRicheSchema } from "../src/modules/exercice/document-riche.ts";
 
 interface ExerciceSeme {
   titre: string;
-  difficulte: number;
+  categorie: "comprehension" | "type_bac" | "approfondissement";
   ordre: number;
   enonce: unknown;
   aide: unknown;
@@ -30,7 +30,7 @@ interface ExerciceSeme {
 const EXERCICES: ExerciceSeme[] = [
   {
     titre: "Une perturbation se déplace sur une corde",
-    difficulte: 2,
+    categorie: "comprehension",
     ordre: 1,
     enonce: {
       version: 1,
@@ -97,7 +97,7 @@ const EXERCICES: ExerciceSeme[] = [
   },
   {
     titre: "Retard d'un point par rapport à la source",
-    difficulte: 2,
+    categorie: "comprehension",
     ordre: 2,
     enonce: {
       version: 1,
@@ -159,7 +159,7 @@ const EXERCICES: ExerciceSeme[] = [
   },
   {
     titre: "Un choc transmis par l'acier et par l'eau",
-    difficulte: 3,
+    categorie: "type_bac",
     ordre: 3,
     enonce: {
       version: 1,
@@ -217,7 +217,7 @@ const EXERCICES: ExerciceSeme[] = [
   },
   {
     titre: "Ultrasons dans l'air et dans l'eau de mer",
-    difficulte: 3,
+    categorie: "type_bac",
     ordre: 4,
     enonce: {
       version: 1,
@@ -274,7 +274,7 @@ const EXERCICES: ExerciceSeme[] = [
   },
   {
     titre: "Localiser un foyer sismique",
-    difficulte: 3,
+    categorie: "type_bac",
     ordre: 5,
     enonce: {
       version: 1,
@@ -327,7 +327,7 @@ const EXERCICES: ExerciceSeme[] = [
   },
   {
     titre: "Éclair et tonnerre",
-    difficulte: 2,
+    categorie: "comprehension",
     ordre: 6,
     enonce: {
       version: 1,
@@ -379,7 +379,7 @@ const EXERCICES: ExerciceSeme[] = [
   },
   {
     titre: "Lire un retard sur l'oscilloscope",
-    difficulte: 2,
+    categorie: "comprehension",
     ordre: 7,
     enonce: {
       version: 1,
@@ -431,7 +431,7 @@ const EXERCICES: ExerciceSeme[] = [
   },
   {
     titre: "Localiser une source avec deux récepteurs",
-    difficulte: 3,
+    categorie: "type_bac",
     ordre: 8,
     enonce: {
       version: 1,
@@ -481,7 +481,7 @@ const EXERCICES: ExerciceSeme[] = [
   },
   {
     titre: "Mesurer une profondeur par écho",
-    difficulte: 2,
+    categorie: "comprehension",
     ordre: 9,
     enonce: {
       version: 1,
@@ -531,7 +531,7 @@ const EXERCICES: ExerciceSeme[] = [
   },
   {
     titre: "Mesurer une épaisseur par deux échos",
-    difficulte: 3,
+    categorie: "type_bac",
     ordre: 10,
     enonce: {
       version: 1,
@@ -637,7 +637,7 @@ async function principal(): Promise<void> {
           enonce: exerciceSeme.enonce as object,
           aide: exerciceSeme.aide as object,
           correction_texte: exerciceSeme.correction_texte as object,
-          difficulte: exerciceSeme.difficulte,
+          categorie: exerciceSeme.categorie,
           ordre: exerciceSeme.ordre,
           statut: "publie",
         },
