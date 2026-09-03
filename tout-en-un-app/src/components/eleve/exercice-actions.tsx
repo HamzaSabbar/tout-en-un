@@ -1,13 +1,28 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
+import Link from "next/link";
 import { ChevronDown, CircleCheckBig, CircleHelp } from "lucide-react";
 import { CorrectionVideo } from "@/components/eleve/correction-video";
 import { MarqueurEtape } from "@/components/eleve/marqueur-etape";
 import { Button } from "@/components/ui/button";
 import { ELEVE_FR } from "@/lib/i18n/eleve.fr";
+import { demanderCarnetAction, enregistrerNoteCarnetAction } from "@/modules/carnet/actions";
 import { analyserAutoEvaluation, type AutoEvaluation } from "@/modules/exercice/auto-evaluation";
 import { demanderAideAction, demanderCorrectionAction } from "@/modules/exercice/actions";
+
+// État du formulaire de carnet, ouvert sous les boutons Oui/Non quand
+// l'élève répond « Non » — jamais de contenu asynchrone à afficher comme
+// pour Aide/Correction, juste deux champs texte, donc pas besoin de la forme
+// `EtatPanneau`.
+interface EtatCarnet {
+  statut: "ferme" | "ouvert";
+  erreur: string;
+  retenu: string;
+  enregistre: boolean;
+}
+
+const CARNET_INITIAL: EtatCarnet = { statut: "ferme", erreur: "", retenu: "", enregistre: false };
 
 interface ExerciceActionsProps {
   matiereId: string;
@@ -49,6 +64,8 @@ export function ExerciceActions({
   const [videoDisponible, setVideoDisponible] = useState(false);
   const [autoEvaluation, setAutoEvaluation] = useState<AutoEvaluation | null>(null);
   const [autoEvaluationEnCours, setAutoEvaluationEnCours] = useState<AutoEvaluation | null>(null);
+  const [carnet, setCarnet] = useState<EtatCarnet>(CARNET_INITIAL);
+  const [carnetEnCours, setCarnetEnCours] = useState(false);
   // Région d'annonce : le contenu change sans navigation, et sans elle le
   // changement passe inaperçu d'un lecteur d'écran.
   const [annonce, setAnnonce] = useState<string | null>(null);
@@ -107,9 +124,38 @@ export function ExerciceActions({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ chapitre_id: chapitreId, cours_id: coursId, etape: reponse }),
       });
-      if (resultat.ok) setAutoEvaluation(analyserAutoEvaluation(reponse));
+      if (!resultat.ok) return;
+      setAutoEvaluation(analyserAutoEvaluation(reponse));
+      // « Non » ouvre le formulaire de carnet, pré-rempli si l'élève a déjà
+      // noté une erreur sur cet exercice une fois auparavant.
+      if (reponse === "a_refaire") {
+        const reponseCarnet = await demanderCarnetAction({ matiereId, exerciceId });
+        if (reponseCarnet.autorise) {
+          setCarnet({
+            statut: "ouvert",
+            erreur: reponseCarnet.note?.erreur ?? "",
+            retenu: reponseCarnet.note?.retenu ?? "",
+            enregistre: false,
+          });
+        }
+      }
     } finally {
       setAutoEvaluationEnCours(null);
+    }
+  }
+
+  async function enregistrerCarnet() {
+    setCarnetEnCours(true);
+    try {
+      const reponse = await enregistrerNoteCarnetAction(
+        { matiereId, exerciceId },
+        { erreur: carnet.erreur, retenu: carnet.retenu },
+      );
+      if (reponse.autorise) {
+        setCarnet((etat) => ({ ...etat, enregistre: true }));
+      }
+    } finally {
+      setCarnetEnCours(false);
     }
   }
 
@@ -211,12 +257,86 @@ export function ExerciceActions({
         <p className="text-body-sm text-muted-foreground">
           {ELEVE_FR.exercice.autoEvaluationConsigne}
         </p>
-        {autoEvaluation && (
+        {autoEvaluation === "reussi" && (
           <p role="status" className="animate-in fade-in-0 text-body-sm font-medium duration-200">
-            {autoEvaluation === "reussi"
-              ? ELEVE_FR.exercice.reponseReussi
-              : ELEVE_FR.exercice.reponseARefaire}
+            {ELEVE_FR.exercice.reponseReussi}
           </p>
+        )}
+        {autoEvaluation === "a_refaire" && carnet.statut === "ouvert" && (
+          <div
+            data-carnet={carnet.enregistre ? "confirmation" : "formulaire"}
+            className="animate-in fade-in-0 space-y-3 rounded-lg border bg-background p-4 duration-200"
+          >
+            {carnet.enregistre ? (
+              <>
+                <p role="status" className="text-body-sm font-medium">
+                  {ELEVE_FR.carnet.confirmationEnregistre}
+                </p>
+                <div className="flex flex-wrap items-center gap-3">
+                  <Link href="/carnet" className="text-body-sm font-medium text-primary hover:underline">
+                    {ELEVE_FR.carnet.voirLeCarnet}
+                  </Link>
+                  <button
+                    type="button"
+                    className="text-body-sm font-medium text-muted-foreground hover:text-foreground hover:underline"
+                    onClick={() => setCarnet((etat) => ({ ...etat, enregistre: false }))}
+                  >
+                    {ELEVE_FR.carnet.modifier}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor={`carnet-erreur-${exerciceId}`} className="text-body-sm font-medium">
+                    {ELEVE_FR.carnet.champErreur}
+                  </label>
+                  <textarea
+                    id={`carnet-erreur-${exerciceId}`}
+                    rows={3}
+                    value={carnet.erreur}
+                    onChange={(evenement) =>
+                      setCarnet((etat) => ({ ...etat, erreur: evenement.target.value }))
+                    }
+                    className="w-full rounded-lg border bg-transparent p-2.5 text-body-sm"
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor={`carnet-retenu-${exerciceId}`} className="text-body-sm font-medium">
+                    {ELEVE_FR.carnet.champRetenu}
+                  </label>
+                  <textarea
+                    id={`carnet-retenu-${exerciceId}`}
+                    rows={3}
+                    value={carnet.retenu}
+                    onChange={(evenement) =>
+                      setCarnet((etat) => ({ ...etat, retenu: evenement.target.value }))
+                    }
+                    className="w-full rounded-lg border bg-transparent p-2.5 text-body-sm"
+                  />
+                </div>
+                <div className="flex flex-wrap gap-3">
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={carnetEnCours || (!carnet.erreur.trim() && !carnet.retenu.trim())}
+                    onClick={() => void enregistrerCarnet()}
+                  >
+                    {ELEVE_FR.carnet.enregistrer}
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={carnetEnCours}
+                    onClick={() => setCarnet(CARNET_INITIAL)}
+                  >
+                    {ELEVE_FR.carnet.plusTard}
+                  </Button>
+                </div>
+              </>
+            )}
+          </div>
         )}
         <div className="flex flex-wrap gap-3">
           <Button

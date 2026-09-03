@@ -384,15 +384,15 @@ test("un exercice créé au back-office est traité étape par étape sur la pag
   // 12. Étape 5 : l'auto-évaluation. Le journal étant ajout seul, changer d'avis
   // ajoute une ligne et c'est la plus récente qui vaut.
   const bilan = carte.locator('[data-etape="auto-evaluation"]');
-  await bilan.getByRole("button", { name: "À refaire" }).click();
-  await expect(bilan.getByText("Noté comme à refaire.", { exact: false })).toBeVisible(
-    DELAI_ETAPE,
-  );
+  await bilan.getByRole("button", { name: "Non", exact: true }).click();
+  // « Non » ouvre le formulaire du carnet d'erreurs à la place du message de
+  // confirmation générique — couvert en détail par carnet-erreurs.spec.ts.
+  await expect(bilan.getByLabel("Quelle erreur as-tu faite ?")).toBeVisible(DELAI_ETAPE);
 
   // Le fait d'abord, l'affichage ensuite : c'est la ligne en base qui porte le
   // critère de sortie, et distinguer les deux dit tout de suite si un échec
   // vient de l'écriture ou du rendu.
-  await bilan.getByRole("button", { name: "J'ai réussi" }).click();
+  await bilan.getByRole("button", { name: "Oui", exact: true }).click();
   await expect
     .poll(() => actionsJournalisees(fixture.matiere.id, exercice.id), { timeout: 20_000 })
     .toContain("reussi");

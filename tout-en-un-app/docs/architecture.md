@@ -263,6 +263,7 @@ un cours entier sans qu'aucun élève ne le voie, puis publie en une action.
 | Table | Champs principaux | Relations |
 |---|---|---|
 | `exercice` | id, cours_id, titre, enonce (riche, LaTeX), categorie (comprehension / type_bac / approfondissement), aide, correction_texte, correction_video_ref, ordre, statut | appartient à `cours` |
+| `carnet_erreur` | id, utilisateur_id, exercice_id, erreur, retenu, cree_le, modifie_le | note personnelle d'un élève sur un exercice, une par élève et par exercice |
 | `extrait_national` | id, matiere_id, chapitre_id, cours_id, annee, session, enonce, sujet_document_id, correction_document_id, correction_video_ref, duree_recommandee, difficulte, ordre, statut | relie un extrait au cours concerné |
 | `examen_national` | id, matiere_id, filiere_id, annee, session, sujet_document_id, correction_document_id, correction_video_ref, statut | examen complet, consultation par année |
 | `test` | id, cours_id, titre, consigne, seuil_validation, duree_minutes, statut | un test par cours au MVP |
@@ -273,6 +274,14 @@ un cours entier sans qu'aucun élève ne le voie, puis publie en une action.
 
 `session` = normale, rattrapage. `question_test.type` = qcm, vrai_faux,
 reponse_courte, avec_image.
+
+`carnet_erreur` n'est pas du contenu pédagogique : c'est une donnée
+personnelle de l'élève, jamais visible du professeur, éditable et
+supprimable par son propriétaire (`@@unique(utilisateur_id, exercice_id)` —
+répondre « non » une seconde fois édite la note existante). Suppression
+physique assumée, contrairement à l'invariant qui vise le contenu du
+professeur. Reste hors du journal `evenement_apprentissage` : celui-ci ne
+porte que des faits d'événement immuables, jamais de texte libre éditable.
 
 `sujet_document_id`/`correction_document_id` (lot 5) pointent vers des lignes
 `document` créées via le même téléversement que le reste du contenu, mais dont

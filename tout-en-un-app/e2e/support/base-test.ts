@@ -187,6 +187,25 @@ export async function nettoyerDonneesE2E(): Promise<void> {
   await prisma.questionTest.deleteMany({ where: { test_id: { in: testIds } } });
   await prisma.test.deleteMany({ where: { id: { in: testIds } } });
 
+  // Avant les exercices : `carnet_erreur` (RESTRICT sur `exercice_id` et sur
+  // `utilisateur_id`) doit être vidé avant `exercice.deleteMany` ci-dessous
+  // et avant `utilisateur.deleteMany` plus bas, même motif que `test` (lot 6)
+  // ou `tentative_test`. Sur les deux critères, comme le journal
+  // d'apprentissage : un compte réel qui aurait noté une erreur sur un
+  // exercice de fixture ne doit pas laisser de ligne orpheline.
+  const exercicesE2E = await prisma.exercice.findMany({
+    where: { cours_id: { in: coursIds } },
+    select: { id: true },
+  });
+  await prisma.carnetErreur.deleteMany({
+    where: {
+      OR: [
+        { exercice_id: { in: exercicesE2E.map((exercice) => exercice.id) } },
+        { utilisateur_id: { in: utilisateurIds } },
+      ],
+    },
+  });
+
   await prisma.exercice.deleteMany({ where: { cours_id: { in: coursIds } } });
   await prisma.video.deleteMany({ where: { cours_id: { in: coursIds } } });
   await prisma.cours.deleteMany({ where: { id: { in: coursIds } } });
@@ -248,6 +267,7 @@ export async function compterResiduE2E(): Promise<number> {
     examensNationaux,
     parties,
     tests,
+    notesCarnet,
   ] = await Promise.all([
     prisma.utilisateur.count({
       where: { email: { startsWith: PREFIXE_E2E.toLowerCase() } },
@@ -274,6 +294,11 @@ export async function compterResiduE2E(): Promise<number> {
     // `test` n'a pas de `matiere_id` direct (seulement `cours_id`) : rattaché
     // à une matière de test par construction, même motif (lot 6).
     prisma.test.count({ where: { cours: { chapitre: { matiere_id: { in: matiereIdsE2E } } } } }),
+    // `carnet_erreur` non plus : rattachée à une matière de test via
+    // `exercice.cours.chapitre`, même motif.
+    prisma.carnetErreur.count({
+      where: { exercice: { cours: { chapitre: { matiere_id: { in: matiereIdsE2E } } } } },
+    }),
   ]);
   return (
     utilisateurs +
@@ -287,6 +312,7 @@ export async function compterResiduE2E(): Promise<number> {
     extraitsNationaux +
     examensNationaux +
     parties +
-    tests
+    tests +
+    notesCarnet
   );
 }
