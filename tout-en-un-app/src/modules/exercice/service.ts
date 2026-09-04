@@ -127,8 +127,9 @@ export async function supprimerExercice(id: bigint): Promise<void> {
 
 // Conditions de visibilité d'un exercice pour un élève : l'exercice, son cours,
 // son chapitre et sa matière publiés, et rien de supprimé. Écrit une seule fois,
-// puis réutilisé par chaque lecture élève, pour qu'aucune n'en oublie un morceau.
-function conditionExercicePublie(matiereId: bigint) {
+// puis réutilisé par chaque lecture élève (dont `carnet/service.ts`), pour
+// qu'aucune n'en oublie un morceau.
+export function conditionExercicePublie(matiereId: bigint) {
   return {
     statut: "publie" as const,
     supprime_le: null,

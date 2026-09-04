@@ -148,6 +148,7 @@ model Utilisateur {
   actions_admin           JournalAdmin[]
   evenements              EvenementApprentissage[]
   tentatives_test         TentativeTest[]
+  notes_carnet            CarnetErreur[]
 
   @@index([filiere_id])
   @@map("utilisateur")
@@ -461,10 +462,35 @@ model Exercice {
   cree_le              DateTime          @default(now())
   supprime_le          DateTime?
 
-  cours Cours @relation(fields: [cours_id], references: [id])
+  cours        Cours          @relation(fields: [cours_id], references: [id])
+  notes_carnet CarnetErreur[]
 
   @@index([cours_id, statut, ordre])
   @@map("exercice")
+}
+
+// Une note personnelle par élève et par exercice : le professeur ne la voit
+// jamais, elle n'est pas du contenu pédagogique. `@@unique` porte la règle
+// « une seule note par élève et par exercice » : répondre « non » une
+// seconde fois édite la note existante au lieu d'en créer une seconde.
+// Suppression physique assumée (pas de `supprime_le`) : donnée personnelle
+// et jetable de l'élève, pas du contenu du professeur — contrairement à
+// l'invariant « pas de suppression physique » qui vise ce dernier.
+model CarnetErreur {
+  id             BigInt   @id @default(autoincrement())
+  utilisateur_id BigInt
+  exercice_id    BigInt
+  erreur         String?
+  retenu         String?
+  cree_le        DateTime @default(now())
+  modifie_le     DateTime @updatedAt
+
+  utilisateur Utilisateur @relation(fields: [utilisateur_id], references: [id])
+  exercice    Exercice    @relation(fields: [exercice_id], references: [id])
+
+  @@unique([utilisateur_id, exercice_id])
+  @@index([utilisateur_id, cree_le])
+  @@map("carnet_erreur")
 }
 
 // Un test par cours au MVP (architecture 5.3, hors périmètre §19 : plusieurs

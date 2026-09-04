@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, BookOpen, ChevronDown, Home, Radio } from "lucide-react";
+import { BarChart3, BookOpen, ChevronDown, Home, NotebookPen, Radio } from "lucide-react";
 import { SousLiensOngletsCours } from "@/components/eleve/onglets-cours";
 import { Badge } from "@/components/ui/badge";
 import { ELEVE_FR } from "@/lib/i18n/eleve.fr";
@@ -19,6 +19,14 @@ import { cn } from "@/lib/utils";
 const LIENS_REELS = [
   { href: "/compte", label: ELEVE_FR.coquille.accueil, icone: Home },
   { href: "/matieres", label: ELEVE_FR.navigation.matieres, icone: BookOpen },
+] as const;
+
+// Un vrai lien, mais volontairement séparé de `LIENS_REELS` par le trait de
+// séparation ci-dessous : le carnet n'est pas une entrée de navigation
+// principale au même titre que « Mes matières », il doit apparaître un peu
+// plus bas.
+const LIENS_SECONDAIRES = [
+  { href: "/carnet", label: ELEVE_FR.navigation.carnet, icone: NotebookPen },
 ] as const;
 
 const LIENS_A_VENIR = [
@@ -69,6 +77,27 @@ export function LiensNavigation() {
       })}
 
       <div className="my-2 border-t" />
+
+      {LIENS_SECONDAIRES.map(({ href, label, icone: Icone }) => {
+        const actif = pathname.startsWith(href);
+        return (
+          <Link
+            key={href}
+            href={href}
+            aria-current={actif ? "page" : undefined}
+            className={cn(
+              "flex min-h-11 items-center gap-3 rounded-lg px-3 font-medium transition-colors",
+              actif ? "bg-secondary text-secondary-foreground" : "text-foreground hover:bg-muted",
+            )}
+          >
+            <Icone
+              aria-hidden="true"
+              className={cn("size-5", actif ? "text-primary" : "text-muted-foreground")}
+            />
+            <span className="flex-1">{label}</span>
+          </Link>
+        );
+      })}
 
       {LIENS_A_VENIR.map(({ label, icone: Icone }) => (
         <span
